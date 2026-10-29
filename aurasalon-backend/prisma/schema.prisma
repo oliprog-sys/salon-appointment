@@ -1,0 +1,308 @@
+// ==========================================
+// Prisma Schema: AuraSalon Platform
+// Database: PostgreSQL
+// ==========================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ------------------------------------------
+// Enums
+// ------------------------------------------
+
+enum UserRole {
+  CLIENT
+  CUSTOMER
+  SALON_OWNER
+  SALON_STAFF
+  STAFF
+  SUPER_ADMIN
+}
+
+enum SalonStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  TELEBIRR
+  CBE_BIRR
+  CHAPA
+  PAY_AT_SALON
+}
+
+// ------------------------------------------
+// Core User & Auth Models
+// ------------------------------------------
+
+model User {
+  id              String         @id @default(uuid())
+  phoneNumber     String         @unique // E.164 format: +2519...
+  email           String?        @unique
+  passwordHash    String
+  fullName        String
+  role            UserRole       @default(CUSTOMER)
+  avatarUrl       String?
+  fcmToken        String?
+  isPhoneVerified Boolean        @default(false)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relationships
+  ownedSalons     Salon[]        @relation("SalonOwner")
+  staffProfile    StaffProfile?
+  appointments    Appointment[]  @relation("CustomerAppointments")
+  reviews         Review[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ------------------------------------------
+// Salon & Structure Models
+// ------------------------------------------
+
+model Salon {
+  id              String         @id @default(uuid())
+  ownerId         String
+  name            String
+  slug            String         @unique
+  description     String?        @db.Text
+  address         String         // e.g., "Bole, Medhanialem Road"
+  subCity         String         // e.g., "Bole", "Kirkos", "Arada", "Yeka"
+  city            String         @default("Addis Ababa")
+  latitude        Float?
+  longitude       Float?
+  coverImageUrl   String?
+  gallery         String[]       // Array of image URLs
+  isFeatured      Boolean        @default(false)
+  isActive        Boolean        @default(true)
+  status          SalonStatus    @default(PENDING_REVIEW)
+  tradeLicenseUrl String?
+  tinNumber       String?
+  kebeleIdUrl     String?
+  payoutBank      String?
+  payoutAccount   String?
+  setupToken      String?        @unique
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relationships
+  owner         User           @relation("SalonOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  categories    Category[]
+  services      Service[]
+  staff         StaffProfile[]
+  appointments  Appointment[]
+  workingHours  WorkingHours[]
+
+  @@map("salons")
+}
+
+model WorkingHours {
+  id        String   @id @default(uuid())
+  salonId   String
+  dayOfWeek Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  openTime  String   // e.g., "08:30"
+  closeTime String   // e.g., "20:00"
+  isClosed  Boolean  @default(false)
+
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([salonId, dayOfWeek])
+  @@map("working_hours")
+}
+
+model StaffProfile {
+  id           String        @id @default(uuid())
+  userId       String        @unique
+  salonId      String
+  title        String        // e.g., "Master Stylist", "Senior Barber"
+  bio          String?
+  isAvailable  Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salon        Salon         @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  services     Service[]     @relation("StaffServices")
+
+  @@map("staff_profiles")
+}
+
+// ------------------------------------------
+// Services & Categories
+// ------------------------------------------
+
+model Category {
+  id        String    @id @default(uuid())
+  salonId   String
+  name      String    // e.g., "Hair Braiding & Artistry"
+  sortOrder Int       @default(0)
+
+  // Relationships
+  salon     Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  services  Service[]
+
+  @@map("categories")
+}
+
+model Service {
+  id          String               @id @default(uuid())
+  salonId     String
+  categoryId  String
+  name        String               // e.g., "Full Box Braids"
+  description String?              @db.Text
+  durationMin Int                  // Duration in minutes (e.g., 180)
+  priceETB    Decimal              @db.Decimal(10, 2)
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  // Relationships
+  salon       Salon                @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  category    Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  staff       StaffProfile[]       @relation("StaffServices")
+  appointments AppointmentService[]
+
+  @@map("services")
+}
+
+// ------------------------------------------
+// Booking & Appointments
+// ------------------------------------------
+
+model Appointment {
+  id            String               @id @default(uuid())
+  bookingCode   String               @unique // Short alphanumeric code for QR check-in
+  customerId    String
+  salonId       String
+  staffId       String?
+  status        AppointmentStatus    @default(PENDING)
+  startTime     DateTime
+  endTime       DateTime
+  subtotalETB   Decimal              @db.Decimal(10, 2)
+  serviceFeeETB Decimal              @db.Decimal(10, 2)
+  totalPriceETB Decimal              @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  // Relationships
+  customer      User                 @relation("CustomerAppointments", fields: [customerId], references: [id])
+  salon         Salon                @relation(fields: [salonId], references: [id])
+  staff         StaffProfile?        @relation(fields: [staffId], references: [id])
+  services      AppointmentService[]
+  payment       Payment?
+  review        Review?
+
+  @@map("appointments")
+}
+
+model AppointmentService {
+  id             String      @id @default(uuid())
+  appointmentId  String
+  serviceId      String
+  priceAtBooking Decimal     @db.Decimal(10, 2)
+
+  // Relationships
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service        Service     @relation(fields: [serviceId], references: [id])
+
+  @@map("appointment_services")
+}
+
+// ------------------------------------------
+// Payments & Transactions
+// ------------------------------------------
+
+model Payment {
+  id             String              @id @default(uuid())
+  appointmentId String              @unique
+  method         PaymentMethod
+  status         PaymentStatus       @default(PENDING)
+  amountETB      Decimal             @db.Decimal(10, 2)
+  providerTxnRef String?             @unique
+  paidAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  // Relationships
+  appointment    Appointment         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  webhooks       PaymentWebhookLog[]
+
+  @@map("payments")
+}
+
+model PaymentWebhookLog {
+  id          String        @id @default(uuid())
+  paymentId   String?
+  provider    PaymentMethod
+  payload     Json
+  processedAt DateTime      @default(now())
+
+  // Relationships
+  payment     Payment?      @relation(fields: [paymentId], references: [id])
+
+  @@map("payment_webhook_logs")
+}
+
+// ------------------------------------------
+// Feedback & Reviews
+// ------------------------------------------
+
+model Review {
+  id            String      @id @default(uuid())
+  appointmentId String      @unique
+  customerId    String
+  rating        Int         // 1 to 5 stars
+  comment       String?     @db.Text
+  tipAmountETB  Decimal?    @default(0.00) @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+
+  // Relationships
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  customer      User        @relation(fields: [customerId], references: [id])
+
+  @@map("reviews")
+}
