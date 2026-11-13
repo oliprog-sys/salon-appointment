@@ -100,6 +100,28 @@ async function main(): Promise<void> {
     },
   });
 
+  // Second branch owned by Tigist Haile (Multi-location Owner showcase)
+  const salonA2 = await prisma.salon.create({
+    data: {
+      ownerId: ownerA.id,
+      name: 'Queen Saba VIP Spa & Wellness',
+      slug: 'queen-saba-vip-spa-wellness',
+      description: 'Luxury spa retreat in Sarbet featuring private VIP suites, Moroccan baths, and holistic wellness therapy.',
+      address: 'Sarbet, near Vatican Embassy, Addis Ababa',
+      subCity: 'Sarbet',
+      city: 'Addis Ababa',
+      latitude: 8.9912,
+      longitude: 38.7450,
+      status: SalonStatus.APPROVED,
+      tinNumber: '0012345679',
+      payoutBank: 'Telebirr / CBE',
+      payoutAccount: '1000998877665',
+      isFeatured: true,
+      isActive: true,
+      coverImageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+    },
+  });
+
   // Salon Owner B
   const ownerB = await prisma.user.create({
     data: {
@@ -205,7 +227,7 @@ async function main(): Promise<void> {
   console.log('   ✅ Created 3 APPROVED Salons and 1 PENDING_REVIEW Salon.\n');
 
   // Create Shift Schedules (Working Hours) for Approved Salons
-  const approvedSalons = [salonA, salonB, salonC];
+  const approvedSalons = [salonA, salonA2, salonB, salonC];
   for (const s of approvedSalons) {
     for (let day = 0; day <= 6; day++) {
       await prisma.workingHours.create({

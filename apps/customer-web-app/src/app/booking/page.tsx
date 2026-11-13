@@ -9,6 +9,21 @@ import { PaymentMethod, Service, Appointment } from '@/types';
 import { getStoredUser, setStoredUser } from '@/utils/authStore';
 import { saveNewAppointment } from '@/utils/appointmentStore';
 
+interface PromoCampaign {
+  id: string;
+  salonId: string;
+  code: string;
+  title: string;
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  discountDisplay: string;
+  validUntil: string;
+  active: boolean;
+  uses: number;
+  totalSavingsETB: number;
+  createdAt: string;
+}
+
 function BookingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,8 +45,11 @@ function BookingForm() {
   const [phoneInput, setPhoneInput] = useState('+251911234567');
   const [otpInput, setOtpInput] = useState('123456');
 
-  // Booking Form State
-  const [appointmentDate, setAppointmentDate] = useState('2026-10-06');
+  // Booking Form State - defaults to current date
+  const [appointmentDate, setAppointmentDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('10:30 AM');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('TELEBIRR');
   const [customerName, setCustomerName] = useState('Abebe Bikila');
@@ -41,6 +59,13 @@ function BookingForm() {
     bookingCode: string;
     qrUrl: string;
   } | null>(null);
+
+  // Active Promo Code State
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoCampaign | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  const [activePromoKey, setActivePromoKey] = useState<string>('');
 
   useEffect(() => {
     const user = getStoredUser();
@@ -62,6 +87,153 @@ function BookingForm() {
   ];
 
   const totalETB = selectedServices.reduce((sum, s) => sum + s.priceETB, 0);
+
+  // Calculate discount based on applied promo campaign
+  const discountAmountETB = appliedPromo
+    ? appliedPromo.discountType === 'PERCENT'
+      ? Math.round(totalETB * (appliedPromo.discountValue / 100))
+      : Math.min(totalETB, appliedPromo.discountValue)
+    : 0;
+
+  const finalTotalETB = Math.max(0, totalETB - discountAmountETB);
+
+  // Read available promos from salon's storage or fallback seed
+  const getAvailablePromos = (): { key: string; promos: PromoCampaign[] } => {
+    // 1. Direct salon promo key
+    const primaryKey = `aurasalon_salon_promos_${targetSalon.id}`;
+    const primaryStored = typeof window !== 'undefined' ? localStorage.getItem(primaryKey) : null;
+    if (primaryStored) {
+      try {
+        const parsed = JSON.parse(primaryStored);
+        if (Array.isArray(parsed) && parsed.length > 0) return { key: primaryKey, promos: parsed };
+      } catch (e) {}
+    }
+
+    // 2. Check for Queen Saba active keys if target is Saba or generic
+    const sabaBoleKey = 'aurasalon_salon_promos_b045c798-6815-41fd-b784-a97c2e6aaeb0';
+    const sabaSarbetKey = 'aurasalon_salon_promos_fb3144c4-186e-4d26-a58b-181ccdddf5bb';
+    for (const key of [sabaBoleKey, sabaSarbetKey]) {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return { key, promos: parsed };
+        } catch (e) {}
+      }
+    }
+
+    // 3. Scan all keys matching aurasalon_salon_promos_
+    if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('aurasalon_salon_promos_')) {
+          const stored = localStorage.getItem(k);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed) && parsed.length > 0) return { key: k, promos: parsed };
+            } catch (e) {}
+          }
+        }
+      }
+    }
+
+    // 4. Default active campaigns if none are stored yet
+    const fallbackPromos: PromoCampaign[] = [
+      {
+        id: 'p-default-1',
+        salonId: targetSalon.id,
+        code: 'VIPSILK20',
+        title: 'Weekend Silk Press & Spa Special',
+        discountType: 'PERCENT',
+        discountValue: 20,
+        discountDisplay: '20% OFF',
+        validUntil: '2026-12-31',
+        active: true,
+        uses: 4,
+        totalSavingsETB: 960,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'p-default-2',
+        salonId: targetSalon.id,
+        code: 'GLOW15',
+        title: 'Gold Glow Facial Launch Voucher',
+        discountType: 'PERCENT',
+        discountValue: 15,
+        discountDisplay: '15% OFF',
+        validUntil: '2026-12-31',
+        active: true,
+        uses: 2,
+        totalSavingsETB: 750,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'p-default-3',
+        salonId: targetSalon.id,
+        code: 'SARBETVIP',
+        title: 'Sarbet VIP Spa Grand Opening',
+        discountType: 'FIXED',
+        discountValue: 250,
+        discountDisplay: '250 ETB OFF',
+        validUntil: '2026-12-31',
+        active: true,
+        uses: 0,
+        totalSavingsETB: 0,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(primaryKey, JSON.stringify(fallbackPromos));
+    }
+    return { key: primaryKey, promos: fallbackPromos };
+  };
+
+  const handleApplyPromo = () => {
+    setPromoError(null);
+    setPromoSuccess(null);
+    const cleaned = promoInput.trim().toUpperCase();
+
+    if (!cleaned) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+
+    const { key, promos } = getAvailablePromos();
+    const matched = promos.find((p) => p.code.toUpperCase() === cleaned);
+
+    if (!matched) {
+      setPromoError(`Promo code "${cleaned}" is not valid for this salon.`);
+      return;
+    }
+
+    // Verify campaign is active (not stopped by salon owner)
+    if (!matched.active) {
+      setPromoError(`Promo code "${cleaned}" has been paused or stopped by the salon.`);
+      return;
+    }
+
+    // Verify campaign has not expired
+    const expiry = new Date(matched.validUntil);
+    expiry.setHours(23, 59, 59, 999);
+    if (expiry < new Date()) {
+      setPromoError(`Promo code "${cleaned}" expired on ${matched.validUntil}.`);
+      return;
+    }
+
+    // Code is valid and active
+    setAppliedPromo(matched);
+    setActivePromoKey(key);
+    setPromoSuccess(`"${matched.code}" applied! You save ${matched.discountDisplay}.`);
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError(null);
+    setPromoSuccess(null);
+  };
 
   const handleConfirmBooking = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,11 +269,31 @@ function BookingForm() {
               salonId: targetSalon.id,
               serviceIds: selectedServices.map((s) => s.id),
               startTime,
-              notes: `Paid via ${selectedPaymentMethod}`,
+              notes: `Paid via ${selectedPaymentMethod}${appliedPromo ? ` (Promo: ${appliedPromo.code})` : ''}`,
             }),
           });
         } catch (e) {
           // Backend sync error handled gracefully
+        }
+      }
+
+      // If a promo was applied, increment its redemptions and recorded savings
+      if (appliedPromo) {
+        try {
+          const keyToUpdate = activePromoKey || `aurasalon_salon_promos_${targetSalon.id}`;
+          const raw = localStorage.getItem(keyToUpdate);
+          if (raw) {
+            const list: PromoCampaign[] = JSON.parse(raw);
+            const idx = list.findIndex((p) => p.code.toUpperCase() === appliedPromo.code.toUpperCase());
+            if (idx !== -1) {
+              list[idx].uses = (list[idx].uses || 0) + 1;
+              list[idx].totalSavingsETB = (list[idx].totalSavingsETB || 0) + discountAmountETB;
+              localStorage.setItem(keyToUpdate, JSON.stringify(list));
+              window.dispatchEvent(new Event('aurasalon_promos_changed'));
+            }
+          }
+        } catch (err) {
+          console.error('Failed to record promo redemption:', err);
         }
       }
 
@@ -122,7 +314,9 @@ function BookingForm() {
         status: 'CONFIRMED',
         paymentMethod: selectedPaymentMethod,
         paymentStatus: 'SUCCESSFUL',
-        totalPriceETB: totalETB,
+        totalPriceETB: finalTotalETB,
+        appliedPromoCode: appliedPromo?.code,
+        discountETB: discountAmountETB > 0 ? discountAmountETB : undefined,
         qrCodeUrl: qrUrl,
         createdAt: new Date().toISOString(),
       };
@@ -376,11 +570,95 @@ function BookingForm() {
                 </div>
               </div>
 
-              <div className="border-t border-[#222734] pt-4 flex justify-between items-center">
-                <span className="font-syne font-bold text-white text-base">Total Payment:</span>
-                <span className="font-syne font-extrabold text-[#E5B869] text-xl">
-                  ETB {totalETB.toLocaleString()}
-                </span>
+              {/* Promo Code Input & Active Discount */}
+              <div className="border-t border-[#222734] pt-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-[#8A92A6] uppercase tracking-wider font-semibold">
+                    Promo / Voucher
+                  </label>
+                  {appliedPromo && (
+                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+
+                {appliedPromo ? (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-mono font-bold text-emerald-300">
+                        🏷️ {appliedPromo.code}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80">
+                        {appliedPromo.discountDisplay} • {appliedPromo.title}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-red-500/20 hover:text-red-400 text-emerald-300 transition-colors"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoInput}
+                      onChange={(e) => {
+                        setPromoInput(e.target.value);
+                        if (promoError) setPromoError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleApplyPromo();
+                        }
+                      }}
+                      placeholder="e.g. VIPSILK20"
+                      className="flex-1 bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder:text-gray-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      className="px-4 py-2 rounded-xl bg-[#222734] hover:bg-[#E5B869] hover:text-[#0A0B0E] text-white text-xs font-bold transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+
+                {promoError && (
+                  <p className="text-[11px] text-red-400 font-medium flex items-center gap-1">
+                    <span>⚠️</span> {promoError}
+                  </p>
+                )}
+                {promoSuccess && !promoError && (
+                  <p className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                    <span>✓</span> {promoSuccess}
+                  </p>
+                )}
+              </div>
+
+              {/* Price Calculation Breakdown */}
+              <div className="border-t border-[#222734] pt-4 space-y-2">
+                <div className="flex justify-between items-center text-xs text-[#8A92A6]">
+                  <span>Subtotal:</span>
+                  <span className="text-white font-medium">ETB {totalETB.toLocaleString()}</span>
+                </div>
+                {appliedPromo && discountAmountETB > 0 && (
+                  <div className="flex justify-between items-center text-xs text-emerald-400">
+                    <span>Promo Discount ({appliedPromo.code}):</span>
+                    <span className="font-semibold">- ETB {discountAmountETB.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2 border-t border-[#222734]/50">
+                  <span className="font-syne font-bold text-white text-base">Total Payment:</span>
+                  <span className="font-syne font-extrabold text-[#E5B869] text-xl">
+                    ETB {finalTotalETB.toLocaleString()}
+                  </span>
+                </div>
               </div>
 
               <button

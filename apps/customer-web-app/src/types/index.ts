@@ -64,6 +64,8 @@ export interface Appointment {
   appointmentDate: string; // YYYY-MM-DD
   appointmentTime: string; // e.g. "10:30 AM"
   totalPriceETB: number;
+  appliedPromoCode?: string;
+  discountETB?: number;
   status: AppointmentStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: 'PENDING' | 'SUCCESSFUL';

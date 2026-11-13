@@ -5,8 +5,9 @@ import * as path from 'path';
 import { AppModule, ObserveInstrument } from './app.module';
 
 async function bootstrap() {
+  const isProd = process.env.NODE_ENV === 'production';
   const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
+    ...(isProd ? { instrument: ObserveInstrument } : {}),
   });
 
   app.enableCors();

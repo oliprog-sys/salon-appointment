@@ -63,6 +63,16 @@ export default function Footer() {
               <p className="text-[11px] text-[#8A92A6]">
                 List your salon, expand client reach in Addis Ababa, and automate floor management.
               </p>
+              <div>
+                <a
+                  href={process.env.NEXT_PUBLIC_SALON_OWNER_URL ? `${process.env.NEXT_PUBLIC_SALON_OWNER_URL}/login` : "http://localhost:3001/login"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-[#E5B869] hover:underline inline-flex items-center gap-1 font-medium"
+                >
+                  Already a partner? Sign in here →
+                </a>
+              </div>
             </div>
 
             <h4 className="font-syne text-xs font-semibold text-white uppercase tracking-wider mb-2">

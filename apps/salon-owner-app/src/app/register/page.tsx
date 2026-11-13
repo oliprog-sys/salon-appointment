@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 
 export default function RegisterPartnerPage() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<'REGISTER' | 'LOGIN'>('REGISTER');
 
   // Register Fields
   const [ownerFullName, setOwnerFullName] = useState('');
@@ -17,10 +16,6 @@ export default function RegisterPartnerPage() {
   const [address, setAddress] = useState('');
   const [subCity, setSubCity] = useState('Bole');
 
-  // Login Fields
-  const [identifier, setIdentifier] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -30,31 +25,21 @@ export default function RegisterPartnerPage() {
     setIsLoading(true);
 
     try {
-      const endpoint = authMode === 'REGISTER' ? '/auth/partner/register' : '/auth/login';
+      const formattedPhone = phoneNumber.startsWith('+251')
+        ? phoneNumber
+        : `+251${phoneNumber.replace(/^0/, '')}`;
 
-      let payload: any;
-      if (authMode === 'REGISTER') {
-        const formattedPhone = phoneNumber.startsWith('+251') ? phoneNumber : `+251${phoneNumber.replace(/^0/, '')}`;
-        payload = {
-          ownerFullName: ownerFullName.trim(),
-          phoneNumber: formattedPhone,
-          email: email.trim() || undefined,
-          password,
-          salonName: salonName.trim(),
-          address: address.trim(),
-          subCity,
-        };
-      } else {
-        if (!identifier.trim()) {
-          throw new Error('Please enter your email or phone number.');
-        }
-        payload = {
-          identifier: identifier.trim(),
-          password: loginPassword,
-        };
-      }
+      const payload = {
+        ownerFullName: ownerFullName.trim(),
+        phoneNumber: formattedPhone,
+        email: email.trim() || undefined,
+        password,
+        salonName: salonName.trim(),
+        address: address.trim(),
+        subCity,
+      };
 
-      const res = await fetch(`http://localhost:4000${endpoint}`, {
+      const res = await fetch('http://localhost:4000/auth/partner/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -64,13 +49,13 @@ export default function RegisterPartnerPage() {
 
       if (!res.ok) {
         const message = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-        throw new Error(message || 'Authentication failed. Please check your credentials.');
+        throw new Error(message || 'Registration failed. Please check your inputs.');
       }
 
       // Strictly save backend JWT & user data
       localStorage.setItem('aurasalon_owner_token', data.accessToken);
       localStorage.setItem('aurasalon_owner_user', JSON.stringify(data.user));
-      localStorage.setItem('aurasalon_salon_status', data.user.salonStatus || 'APPROVED');
+      localStorage.setItem('aurasalon_salon_status', 'PENDING_REVIEW');
 
       router.push('/');
     } catch (err: any) {
@@ -87,7 +72,7 @@ export default function RegisterPartnerPage() {
           A
         </div>
         <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          {authMode === 'REGISTER' ? 'Partner with AuraSalon' : 'Salon Owner Login'}
+          Partner with AuraSalon
         </h2>
         <p className="text-xs text-slate-400">
           List your salon in Addis Ababa & access floor management tools
@@ -96,179 +81,122 @@ export default function RegisterPartnerPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-slate-800 py-8 px-6 shadow-2xl rounded-2xl border border-slate-700 sm:px-10 space-y-6">
-          {/* Mode Switcher */}
-          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('REGISTER');
-                setErrorMessage('');
-              }}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                authMode === 'REGISTER'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Sign Up Partner
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('LOGIN');
-                setErrorMessage('');
-              }}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                authMode === 'LOGIN'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Owner Login
-            </button>
-          </div>
-
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-xs text-center font-medium">
+            <div className="p-3.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-xs text-center font-medium">
               ⚠️ {errorMessage}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {authMode === 'REGISTER' ? (
-              <>
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Owner Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={ownerFullName}
-                    onChange={(e) => setOwnerFullName(e.target.value)}
-                    placeholder="e.g. Tigist Alemu"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Owner Full Name *</label>
+              <input
+                type="text"
+                required
+                value={ownerFullName}
+                onChange={(e) => setOwnerFullName(e.target.value)}
+                placeholder="e.g. Tigist Alemu"
+                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Email Address (Optional)</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tigist.alemu@aurasalon.et"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Email Address (Optional)</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tigist.alemu@aurasalon.et"
+                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Phone Number (+251) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+251 91 111 1111"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono font-medium"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Phone Number (+251) *</label>
+              <input
+                type="text"
+                required
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+251 91 111 1111"
+                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Password *</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Initial Salon Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={salonName}
-                    onChange={(e) => setSalonName(e.target.value)}
-                    placeholder="e.g. Aura Luxe Salon"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Salon Name *</label>
+              <input
+                type="text"
+                required
+                value={salonName}
+                onChange={(e) => setSalonName(e.target.value)}
+                placeholder="e.g. Aura Luxe Salon"
+                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
+            </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Sub-City *</label>
-                    <select
-                      value={subCity}
-                      onChange={(e) => setSubCity(e.target.value)}
-                      className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-bold"
-                    >
-                      <option value="Bole">Bole</option>
-                      <option value="Kazanchis">Kazanchis</option>
-                      <option value="Sarbet">Sarbet</option>
-                      <option value="Old Airport">Old Airport</option>
-                      <option value="Piassa">Piassa</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Address *</label>
-                    <input
-                      type="text"
-                      required
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Medhanialem Rd"
-                      className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg transition flex items-center justify-center gap-2"
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Sub-City *</label>
+                <select
+                  value={subCity}
+                  onChange={(e) => setSubCity(e.target.value)}
+                  className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
-                  {isLoading ? 'Registering Salon...' : 'Register Salon & Proceed to Onboarding →'}
-                </button>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Email or Phone Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="tigist.alemu@aurasalon.et or +251911111111"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-medium"
-                  />
-                </div>
+                  <option value="Bole">Bole</option>
+                  <option value="Kazanchis">Kazanchis</option>
+                  <option value="Sarbet">Sarbet</option>
+                  <option value="Old Airport">Old Airport</option>
+                  <option value="Piassa">Piassa</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Address *</label>
+                <input
+                  type="text"
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Near Edna Mall"
+                  className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  {isLoading ? 'Authenticating...' : 'Sign In to Dashboard →'}
-                </button>
-              </>
-            )}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isLoading ? 'Registering Salon...' : 'Register Salon & Proceed to Onboarding →'}
+            </button>
           </form>
+
+          {/* Direct link for existing owners & staff */}
+          <div className="pt-4 border-t border-slate-700/80 text-center">
+            <p className="text-xs text-slate-400">
+              Already have a registered salon?{' '}
+              <Link
+                href="/login"
+                className="text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2 ml-1"
+              >
+                Sign in to Dashboard
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
