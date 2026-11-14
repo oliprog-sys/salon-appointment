@@ -1,21 +1,59 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --aura-black: #0A0B0E;
-    --aura-surface: #111318;
-    --aura-card: #161922;
-    --aura-border: #222734;
-    --aura-gold: #E5B869;
-    --aura-gold-light: #F3D28E;
-    --aura-gold-dark: #B88E40;
-    --aura-muted: #8A92A6;
-  }
+:root {
+  /* Default Light Mode - Bright, Clean & Welcoming Luxury Spa Aesthetic */
+  --bg-primary: #F8F9FA;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-subtle: #F1F4F8;
+  --border-primary: #E2E8F0;
+  --border-subtle: #EEF2F6;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --aura-gold: #B88E40;
+  --aura-gold-light: #D4AF37;
+  --aura-gold-dark: #8C6B2B;
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --nav-border: rgba(184, 142, 64, 0.22);
+  --card-glass: rgba(255, 255, 255, 0.96);
+  --card-border: rgba(226, 232, 240, 0.95);
+  --hero-glow: radial-gradient(circle at 50% 15%, rgba(229, 184, 105, 0.28) 0%, rgba(248, 249, 250, 0) 70%);
+  --gold-gradient: linear-gradient(135deg, #A87D2B 0%, #D4AF37 50%, #8C6B2B 100%);
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 20px 35px -10px rgba(0, 0, 0, 0.1), 0 0 15px -3px rgba(184, 142, 64, 0.2);
+}
 
+.dark {
+  /* Dark Mode - Refined Midnight Sanctuary */
+  --bg-primary: #0A0B0E;
+  --bg-surface: #111318;
+  --bg-card: #161922;
+  --bg-card-subtle: #1C212D;
+  --border-primary: #222734;
+  --border-subtle: #2D3344;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #8A92A6;
+  --aura-gold: #E5B869;
+  --aura-gold-light: #F3D28E;
+  --aura-gold-dark: #B88E40;
+  --nav-bg: rgba(10, 11, 14, 0.88);
+  --nav-border: rgba(229, 184, 105, 0.18);
+  --card-glass: linear-gradient(180deg, rgba(22, 25, 34, 0.85) 0%, rgba(17, 19, 24, 0.98) 100%);
+  --card-border: rgba(34, 39, 52, 0.8);
+  --hero-glow: radial-gradient(circle at 50% 20%, rgba(229, 184, 105, 0.15) 0%, rgba(10, 11, 14, 0) 75%);
+  --gold-gradient: linear-gradient(135deg, #F3D28E 0%, #E5B869 50%, #B88E40 100%);
+  --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+  --shadow-card-hover: 0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 20px -5px rgba(229, 184, 105, 0.25);
+}
+
+@layer base {
   body {
-    background-color: var(--aura-black);
-    color: #E2E8F0;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
@@ -23,30 +61,33 @@
   font-family: 'Syne', sans-serif;
 }
 
-/* Glassmorphism navigation header */
+/* Navigation header */
 .glass-nav {
-  background: rgba(10, 11, 14, 0.85);
+  background: var(--nav-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(229, 184, 105, 0.15);
+  border-bottom: 1px solid var(--nav-border);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
-/* Glass card container */
+/* Card container */
 .glass-card {
-  background: linear-gradient(180deg, rgba(22, 25, 34, 0.7) 0%, rgba(17, 19, 24, 0.95) 100%);
+  background: var(--card-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(34, 39, 52, 0.8);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-card);
+  transition: all 0.25s ease;
 }
 
 /* Hero radial glow */
 .hero-radial-glow {
-  background: radial-gradient(circle at 50% 20%, rgba(229, 184, 105, 0.14) 0%, rgba(10, 11, 14, 0) 75%);
+  background: var(--hero-glow);
 }
 
 /* Luxury Gold Text Gradient */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #F3D28E 0%, #E5B869 50%, #B88E40 100%);
+  background: var(--gold-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -62,7 +103,7 @@
 }
 
 .shadow-card-hover {
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8);
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* Custom Scrollbar */

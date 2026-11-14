@@ -2,11 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { setStoredUser } from '@/utils/authStore';
 
 export default function AuthPage() {
-  const router = useRouter();
   const [authMode, setAuthMode] = useState<'SIGN_IN' | 'SIGN_UP'>('SIGN_IN');
 
   // Form Inputs
@@ -76,34 +74,34 @@ export default function AuthPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
       <div className="text-center max-w-xl mx-auto space-y-3">
-        <span className="text-xs uppercase tracking-[0.25em] text-[#E5B869] font-semibold">
+        <span className="text-xs uppercase tracking-[0.25em] text-[var(--aura-gold)] font-bold">
           Luxury Access Portal
         </span>
-        <h1 className="text-3xl sm:text-4xl font-syne font-bold text-white">
+        <h1 className="text-3xl sm:text-4xl font-syne font-extrabold text-[var(--text-primary)]">
           {authMode === 'SIGN_IN' ? 'Welcome Back to AuraSalon' : 'Join VIP Sanctuary'}
         </h1>
-        <p className="text-xs sm:text-sm text-[#8A92A6]">
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
           Sign in or register to unlock priority weekend bookings and cashback pricing across Addis Ababa.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         {/* Auth Form Card */}
-        <div className="glass-card rounded-3xl p-8 border border-[#222734] space-y-6 shadow-2xl">
+        <div className="glass-card rounded-3xl p-8 border border-[var(--border-primary)] space-y-6 shadow-xl">
           {!isSuccess ? (
             <>
               {/* Mode Switcher */}
-              <div className="flex bg-[#111318] p-1 rounded-full border border-[#222734]">
+              <div className="flex bg-[var(--bg-card-subtle)] p-1 rounded-full border border-[var(--border-primary)]">
                 <button
                   type="button"
                   onClick={() => {
                     setAuthMode('SIGN_IN');
                     setErrorMessage('');
                   }}
-                  className={`flex-1 py-2 rounded-full text-xs font-semibold transition-all ${
+                  className={`flex-1 py-2 rounded-full text-xs font-bold transition-all ${
                     authMode === 'SIGN_IN'
                       ? 'bg-[#E5B869] text-[#0A0B0E] shadow-gold-glow-sm'
-                      : 'text-[#8A92A6] hover:text-white'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Sign In
@@ -114,10 +112,10 @@ export default function AuthPage() {
                     setAuthMode('SIGN_UP');
                     setErrorMessage('');
                   }}
-                  className={`flex-1 py-2 rounded-full text-xs font-semibold transition-all ${
+                  className={`flex-1 py-2 rounded-full text-xs font-bold transition-all ${
                     authMode === 'SIGN_UP'
                       ? 'bg-[#E5B869] text-[#0A0B0E] shadow-gold-glow-sm'
-                      : 'text-[#8A92A6] hover:text-white'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   Create Account
@@ -125,7 +123,7 @@ export default function AuthPage() {
               </div>
 
               {errorMessage && (
-                <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/50 text-red-400 text-xs text-center font-medium">
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-600 dark:text-red-400 text-xs text-center font-medium">
                   ⚠️ {errorMessage}
                 </div>
               )}
@@ -133,7 +131,7 @@ export default function AuthPage() {
               <form onSubmit={handleAuthSubmit} className="space-y-4">
                 {authMode === 'SIGN_UP' && (
                   <div>
-                    <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-1 font-semibold">
+                    <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1 font-bold">
                       Full Name
                     </label>
                     <input
@@ -142,14 +140,14 @@ export default function AuthPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="e.g. Abebe Bikila"
-                      className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
+                      className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none"
                     />
                   </div>
                 )}
 
                 {authMode === 'SIGN_IN' ? (
                   <div>
-                    <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-1 font-semibold">
+                    <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1 font-bold">
                       Email or Phone Number (+251...)
                     </label>
                     <input
@@ -158,13 +156,13 @@ export default function AuthPage() {
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       placeholder="admin@aurasalon.et or +251911..."
-                      className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
+                      className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none"
                     />
                   </div>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-1 font-semibold">
+                      <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1 font-bold">
                         Email Address (Optional)
                       </label>
                       <input
@@ -172,12 +170,12 @@ export default function AuthPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="vip@aurasalon.et"
-                        className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
+                        className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-1 font-semibold">
+                      <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1 font-bold">
                         Ethiopia Mobile Number (+251) *
                       </label>
                       <input
@@ -186,14 +184,14 @@ export default function AuthPage() {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="+251 91 123 4567"
-                        className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none font-mono"
+                        className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono"
                       />
                     </div>
                   </>
                 )}
 
                 <div>
-                  <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-1 font-semibold">
+                  <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1 font-bold">
                     Password *
                   </label>
                   <input
@@ -203,7 +201,7 @@ export default function AuthPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none font-mono"
+                    className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono"
                   />
                 </div>
 
@@ -230,20 +228,20 @@ export default function AuthPage() {
               <div className="w-14 h-14 rounded-full bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869] flex items-center justify-center mx-auto text-xl">
                 ✓
               </div>
-              <h3 className="font-syne text-xl font-bold text-white">Welcome, {authenticatedUserName}!</h3>
-              <p className="text-xs text-[#8A92A6]">
+              <h3 className="font-syne text-xl font-bold text-[var(--text-primary)]">Welcome, {authenticatedUserName}!</h3>
+              <p className="text-xs text-[var(--text-secondary)]">
                 You are authenticated. Your session token has been verified against PostgreSQL.
               </p>
               <div className="space-y-2">
                 <Link
                   href="/booking"
-                  className="inline-block w-full py-3.5 rounded-full text-xs font-bold uppercase bg-[#E5B869] text-[#0A0B0E]"
+                  className="inline-block w-full py-3.5 rounded-full text-xs font-bold uppercase bg-[#E5B869] text-[#0A0B0E] hover:bg-[#F3D28E]"
                 >
                   Book a Service Now
                 </Link>
                 <Link
                   href="/appointments"
-                  className="inline-block w-full py-3.5 rounded-full text-xs font-bold uppercase bg-[#111318] border border-[#222734] text-white"
+                  className="inline-block w-full py-3.5 rounded-full text-xs font-bold uppercase bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] text-[var(--text-primary)] hover:border-[#E5B869]/50"
                 >
                   Go to My Appointments
                 </Link>
@@ -255,34 +253,34 @@ export default function AuthPage() {
         {/* Right Column: VIP Membership Perks Showcase */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E5B869]">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--aura-gold)]">
               VIP Tier Benefits
             </span>
-            <h2 className="text-2xl font-syne font-bold text-white">
+            <h2 className="text-2xl font-syne font-bold text-[var(--text-primary)]">
               Why Join Aura VIP Sanctuary?
             </h2>
           </div>
 
           <div className="space-y-4">
-            <div className="p-4 rounded-2xl bg-[#111318]/70 border border-[#222734] flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#E5B869]/20 text-[#E5B869] flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <div className="p-4 rounded-2xl bg-[var(--bg-card-subtle)]/70 border border-[var(--border-primary)] flex items-start gap-3 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-[var(--aura-gold)]/20 text-[var(--aura-gold)] flex items-center justify-center font-bold text-sm flex-shrink-0">
                 10%
               </div>
               <div>
-                <h4 className="font-syne font-bold text-white text-sm">Telebirr & CBE Cashback</h4>
-                <p className="text-xs text-[#8A92A6]">
+                <h4 className="font-syne font-bold text-[var(--text-primary)] text-sm">Telebirr & CBE Cashback</h4>
+                <p className="text-xs text-[var(--text-secondary)]">
                   Earn 10% credit back on every digital payment executed through Telebirr or CBE Birr.
                 </p>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#111318]/70 border border-[#222734] flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#E5B869]/20 text-[#E5B869] flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <div className="p-4 rounded-2xl bg-[var(--bg-card-subtle)]/70 border border-[var(--border-primary)] flex items-start gap-3 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-[var(--aura-gold)]/20 text-[var(--aura-gold)] flex items-center justify-center font-bold text-sm flex-shrink-0">
                 ⭐
               </div>
               <div>
-                <h4 className="font-syne font-bold text-white text-sm">Priority Weekend Booking</h4>
-                <p className="text-xs text-[#8A92A6]">
+                <h4 className="font-syne font-bold text-[var(--text-primary)] text-sm">Priority Weekend Booking</h4>
+                <p className="text-xs text-[var(--text-secondary)]">
                   Reserve coveted prime weekend slots at top Bole and Kazanchis salons up to 30 days in advance.
                 </p>
               </div>

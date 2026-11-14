@@ -155,7 +155,7 @@ export class SalonService {
 
   async findAllSalons(query: QuerySalonDto): Promise<{ data: any[]; meta: any }> {
     const page = query.page || 1;
-    const limit = query.limit || 10;
+    const limit = query.limit || 50;
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -188,9 +188,23 @@ export class SalonService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
         include: {
           workingHours: true,
+          categories: {
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              services: {
+                where: { isActive: true },
+              },
+            },
+          },
+          services: {
+            where: { isActive: true },
+            include: {
+              category: true,
+            },
+          },
           staff: {
             where: { isAvailable: true },
             include: {
@@ -242,6 +256,12 @@ export class SalonService {
             services: {
               where: { isActive: true },
             },
+          },
+        },
+        services: {
+          where: { isActive: true },
+          include: {
+            category: true,
           },
         },
       },

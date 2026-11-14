@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -23,10 +24,12 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#0A0B0E] text-slate-100 min-h-screen flex flex-col justify-between selection:bg-[#E5B869] selection:text-[#0A0B0E]">
-        <Navbar />
-        <main className="flex-grow pt-24 pb-16">{children}</main>
-        <Footer />
+      <body className="min-h-screen flex flex-col justify-between selection:bg-[#E5B869] selection:text-[#0A0B0E] transition-colors duration-250">
+        <ThemeProvider>
+          <Navbar />
+          <main className="flex-grow pt-24 pb-16">{children}</main>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );

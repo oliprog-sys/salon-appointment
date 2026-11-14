@@ -5,9 +5,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MOCK_SALONS } from '@/data/mockData';
-import { PaymentMethod, Service, Appointment } from '@/types';
+import { PaymentMethod, Service, Appointment, Salon } from '@/types';
 import { getStoredUser, setStoredUser } from '@/utils/authStore';
 import { saveNewAppointment } from '@/utils/appointmentStore';
+import { fetchSalonById, fetchSalonBySlug } from '@/utils/salonApi';
 
 interface PromoCampaign {
   id: string;
@@ -31,12 +32,33 @@ function BookingForm() {
   const salonIdParam = searchParams.get('salonId') || MOCK_SALONS[0].id;
   const serviceIdsParam = searchParams.get('services') || MOCK_SALONS[0].services[0].id;
 
-  const targetSalon = MOCK_SALONS.find((s) => s.id === salonIdParam) || MOCK_SALONS[0];
+  // Real or fallback target salon
+  const [targetSalon, setTargetSalon] = useState<Salon>(() => {
+    return MOCK_SALONS.find((s) => s.id === salonIdParam || s.slug === salonIdParam) || MOCK_SALONS[0];
+  });
+
+  // Fetch real salon from backend database
+  useEffect(() => {
+    async function loadSalonData() {
+      if (salonIdParam) {
+        let real = await fetchSalonById(salonIdParam);
+        if (!real) {
+          real = await fetchSalonBySlug(salonIdParam);
+        }
+        if (real) {
+          setTargetSalon(real);
+        }
+      }
+    }
+    loadSalonData();
+  }, [salonIdParam]);
 
   const initialServiceIds = serviceIdsParam.split(',');
-  const selectedServices: Service[] = targetSalon.services.filter((s) =>
+  const matchedServices: Service[] = targetSalon.services.filter((s) =>
     initialServiceIds.includes(s.id)
   );
+  const selectedServices: Service[] =
+    matchedServices.length > 0 ? matchedServices : targetSalon.services.slice(0, 1);
 
   // Auth Interception State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -99,7 +121,6 @@ function BookingForm() {
 
   // Read available promos from salon's storage or fallback seed
   const getAvailablePromos = (): { key: string; promos: PromoCampaign[] } => {
-    // 1. Direct salon promo key
     const primaryKey = `aurasalon_salon_promos_${targetSalon.id}`;
     const primaryStored = typeof window !== 'undefined' ? localStorage.getItem(primaryKey) : null;
     if (primaryStored) {
@@ -109,7 +130,7 @@ function BookingForm() {
       } catch (e) {}
     }
 
-    // 2. Check for Queen Saba active keys if target is Saba or generic
+    // Check for Queen Saba active keys if target is Saba or generic
     const sabaBoleKey = 'aurasalon_salon_promos_b045c798-6815-41fd-b784-a97c2e6aaeb0';
     const sabaSarbetKey = 'aurasalon_salon_promos_fb3144c4-186e-4d26-a58b-181ccdddf5bb';
     for (const key of [sabaBoleKey, sabaSarbetKey]) {
@@ -122,7 +143,6 @@ function BookingForm() {
       }
     }
 
-    // 3. Scan all keys matching aurasalon_salon_promos_
     if (typeof window !== 'undefined') {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -138,7 +158,6 @@ function BookingForm() {
       }
     }
 
-    // 4. Default active campaigns if none are stored yet
     const fallbackPromos: PromoCampaign[] = [
       {
         id: 'p-default-1',
@@ -208,13 +227,11 @@ function BookingForm() {
       return;
     }
 
-    // Verify campaign is active (not stopped by salon owner)
     if (!matched.active) {
       setPromoError(`Promo code "${cleaned}" has been paused or stopped by the salon.`);
       return;
     }
 
-    // Verify campaign has not expired
     const expiry = new Date(matched.validUntil);
     expiry.setHours(23, 59, 59, 999);
     if (expiry < new Date()) {
@@ -222,7 +239,6 @@ function BookingForm() {
       return;
     }
 
-    // Code is valid and active
     setAppliedPromo(matched);
     setActivePromoKey(key);
     setPromoSuccess(`"${matched.code}" applied! You save ${matched.discountDisplay}.`);
@@ -238,7 +254,6 @@ function BookingForm() {
   const handleConfirmBooking = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Intercept with Auth Modal if customer is not logged in
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
@@ -357,14 +372,14 @@ function BookingForm() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Header Title */}
       <div className="text-center max-w-2xl mx-auto space-y-2">
-        <span className="text-xs uppercase tracking-[0.2em] text-[#E5B869] font-semibold">
+        <span className="text-xs uppercase tracking-[0.2em] text-[var(--aura-gold)] font-bold">
           Finalize Reservation
         </span>
-        <h1 className="text-3xl sm:text-4xl font-syne font-bold text-white">
+        <h1 className="text-3xl sm:text-4xl font-syne font-extrabold text-[var(--text-primary)]">
           Complete Booking & Payment
         </h1>
-        <p className="text-xs sm:text-sm text-[#8A92A6]">
-          Confirm your appointment at <span className="text-white font-semibold">{targetSalon.name}</span> in {targetSalon.subCity}
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
+          Confirm your appointment at <span className="text-[var(--text-primary)] font-bold">{targetSalon.name}</span> in {targetSalon.subCity}
         </p>
       </div>
 
@@ -373,17 +388,17 @@ function BookingForm() {
           {/* Left 2 Columns: Date, Time, Payment Options & Client Info */}
           <div className="lg:col-span-2 space-y-8">
             {/* Step 1: Select Date & Time */}
-            <div className="glass-card rounded-2xl p-6 border border-[#222734] space-y-5">
-              <div className="flex items-center gap-3 border-b border-[#222734] pb-4">
-                <span className="w-8 h-8 rounded-full bg-[#E5B869] text-[#0A0B0E] font-syne font-bold flex items-center justify-center text-sm">
+            <div className="glass-card rounded-2xl p-6 border border-[var(--border-primary)] space-y-5">
+              <div className="flex items-center gap-3 border-b border-[var(--border-primary)] pb-4">
+                <span className="w-8 h-8 rounded-full bg-[#E5B869] text-[#0A0B0E] font-syne font-bold flex items-center justify-center text-sm shadow-sm">
                   1
                 </span>
-                <h3 className="font-syne text-lg font-bold text-white">Choose Date & Time Slot</h3>
+                <h3 className="font-syne text-lg font-bold text-[var(--text-primary)]">Choose Date & Time Slot</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-2 font-semibold">
+                  <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-2 font-bold">
                     Appointment Date
                   </label>
                   <input
@@ -391,12 +406,12 @@ function BookingForm() {
                     value={appointmentDate}
                     onChange={(e) => setAppointmentDate(e.target.value)}
                     required
-                    className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
+                    className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-2 font-semibold">
+                  <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-2 font-bold">
                     Customer Full Name
                   </label>
                   <input
@@ -405,13 +420,13 @@ function BookingForm() {
                     onChange={(e) => setCustomerName(e.target.value)}
                     required
                     placeholder="e.g. Abebe Bikila"
-                    className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
+                    className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-2 font-semibold">
+                <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-2 font-bold">
                   Phone Number (Ethiopia E.164 Format)
                 </label>
                 <input
@@ -420,12 +435,12 @@ function BookingForm() {
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   required
                   placeholder="+251 9..."
-                  className="w-full bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none"
+                  className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-[#8A92A6] uppercase tracking-wider mb-2 font-semibold">
+                <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-2 font-bold">
                   Available Time Slots
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
@@ -436,10 +451,10 @@ function BookingForm() {
                         key={slot}
                         type="button"
                         onClick={() => setSelectedTimeSlot(slot)}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-semibold border transition-all ${
+                        className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
                           isSelected
-                            ? 'border-[#E5B869] bg-[#E5B869]/20 text-[#E5B869] shadow-gold-glow-sm'
-                            : 'border-[#222734] bg-[#111318] text-gray-300 hover:border-[#E5B869]/40'
+                            ? 'border-[var(--aura-gold)] bg-[var(--aura-gold)]/15 text-[var(--aura-gold)] shadow-gold-glow-sm'
+                            : 'border-[var(--border-primary)] bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] hover:border-[var(--aura-gold)]/40 hover:text-[var(--text-primary)]'
                         }`}
                       >
                         {slot}
@@ -451,12 +466,12 @@ function BookingForm() {
             </div>
 
             {/* Step 2: Payment Method Selection */}
-            <div className="glass-card rounded-2xl p-6 border border-[#222734] space-y-5">
-              <div className="flex items-center gap-3 border-b border-[#222734] pb-4">
-                <span className="w-8 h-8 rounded-full bg-[#E5B869] text-[#0A0B0E] font-syne font-bold flex items-center justify-center text-sm">
+            <div className="glass-card rounded-2xl p-6 border border-[var(--border-primary)] space-y-5">
+              <div className="flex items-center gap-3 border-b border-[var(--border-primary)] pb-4">
+                <span className="w-8 h-8 rounded-full bg-[#E5B869] text-[#0A0B0E] font-syne font-bold flex items-center justify-center text-sm shadow-sm">
                   2
                 </span>
-                <h3 className="font-syne text-lg font-bold text-white">Select Ethiopian Payment Method</h3>
+                <h3 className="font-syne text-lg font-bold text-[var(--text-primary)]">Select Ethiopian Payment Method</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -466,16 +481,16 @@ function BookingForm() {
                   onClick={() => setSelectedPaymentMethod('TELEBIRR')}
                   className={`p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                     selectedPaymentMethod === 'TELEBIRR'
-                      ? 'border-[#E5B869] bg-[#E5B869]/10 shadow-gold-glow-sm'
-                      : 'border-[#222734] bg-[#111318] hover:border-[#E5B869]/40'
+                      ? 'border-[var(--aura-gold)] bg-[var(--aura-gold)]/10 shadow-sm'
+                      : 'border-[var(--border-primary)] bg-[var(--bg-card-subtle)] hover:border-[var(--aura-gold)]/40'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-500 font-extrabold flex items-center justify-center text-xs flex-shrink-0">
                     tb
                   </div>
                   <div>
-                    <h4 className="font-syne font-bold text-white text-sm">Telebirr SuperApp</h4>
-                    <p className="text-[10px] text-[#8A92A6]">Instant Ethio Telecom mobile transfer</p>
+                    <h4 className="font-syne font-bold text-[var(--text-primary)] text-sm">Telebirr SuperApp</h4>
+                    <p className="text-[10px] text-[var(--text-muted)]">Instant Ethio Telecom mobile transfer</p>
                   </div>
                 </button>
 
@@ -485,16 +500,16 @@ function BookingForm() {
                   onClick={() => setSelectedPaymentMethod('CBE_BIRR')}
                   className={`p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                     selectedPaymentMethod === 'CBE_BIRR'
-                      ? 'border-[#E5B869] bg-[#E5B869]/10 shadow-gold-glow-sm'
-                      : 'border-[#222734] bg-[#111318] hover:border-[#E5B869]/40'
+                      ? 'border-[var(--aura-gold)] bg-[var(--aura-gold)]/10 shadow-sm'
+                      : 'border-[var(--border-primary)] bg-[var(--bg-card-subtle)] hover:border-[var(--aura-gold)]/40'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-500 font-extrabold flex items-center justify-center text-xs flex-shrink-0">
                     CBE
                   </div>
                   <div>
-                    <h4 className="font-syne font-bold text-white text-sm">CBE Birr</h4>
-                    <p className="text-[10px] text-[#8A92A6]">Commercial Bank of Ethiopia transfer</p>
+                    <h4 className="font-syne font-bold text-[var(--text-primary)] text-sm">CBE Birr</h4>
+                    <p className="text-[10px] text-[var(--text-muted)]">Commercial Bank of Ethiopia transfer</p>
                   </div>
                 </button>
 
@@ -504,16 +519,16 @@ function BookingForm() {
                   onClick={() => setSelectedPaymentMethod('CHAPA')}
                   className={`p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                     selectedPaymentMethod === 'CHAPA'
-                      ? 'border-[#E5B869] bg-[#E5B869]/10 shadow-gold-glow-sm'
-                      : 'border-[#222734] bg-[#111318] hover:border-[#E5B869]/40'
+                      ? 'border-[var(--aura-gold)] bg-[var(--aura-gold)]/10 shadow-sm'
+                      : 'border-[var(--border-primary)] bg-[var(--bg-card-subtle)] hover:border-[var(--aura-gold)]/40'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-500 font-extrabold flex items-center justify-center text-xs flex-shrink-0">
                     CP
                   </div>
                   <div>
-                    <h4 className="font-syne font-bold text-white text-sm">Chapa Gateway</h4>
-                    <p className="text-[10px] text-[#8A92A6]">Debit / Credit Cards & e-wallets</p>
+                    <h4 className="font-syne font-bold text-[var(--text-primary)] text-sm">Chapa Gateway</h4>
+                    <p className="text-[10px] text-[var(--text-muted)]">Debit / Credit Cards & e-wallets</p>
                   </div>
                 </button>
 
@@ -523,16 +538,16 @@ function BookingForm() {
                   onClick={() => setSelectedPaymentMethod('PAY_AT_SALON')}
                   className={`p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                     selectedPaymentMethod === 'PAY_AT_SALON'
-                      ? 'border-[#E5B869] bg-[#E5B869]/10 shadow-gold-glow-sm'
-                      : 'border-[#222734] bg-[#111318] hover:border-[#E5B869]/40'
+                      ? 'border-[var(--aura-gold)] bg-[var(--aura-gold)]/10 shadow-sm'
+                      : 'border-[var(--border-primary)] bg-[var(--bg-card-subtle)] hover:border-[var(--aura-gold)]/40'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#E5B869]/20 text-[#E5B869] font-bold flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#E5B869]/20 text-[var(--aura-gold)] font-bold flex items-center justify-center text-xs flex-shrink-0">
                     💵
                   </div>
                   <div>
-                    <h4 className="font-syne font-bold text-white text-sm">Pay at Salon</h4>
-                    <p className="text-[10px] text-[#8A92A6]">Cash or POS on appointment arrival</p>
+                    <h4 className="font-syne font-bold text-[var(--text-primary)] text-sm">Pay at Salon</h4>
+                    <p className="text-[10px] text-[var(--text-muted)]">Cash or POS on appointment arrival</p>
                   </div>
                 </button>
               </div>
@@ -541,29 +556,31 @@ function BookingForm() {
 
           {/* Right Column: Checkout Summary Card */}
           <div className="lg:col-span-1">
-            <div className="glass-card rounded-2xl p-6 border border-[#222734] space-y-6 sticky top-28">
-              <h3 className="font-syne text-xl font-bold text-white border-b border-[#222734] pb-4">
+            <div className="glass-card rounded-2xl p-6 border border-[var(--border-primary)] space-y-6 sticky top-28 shadow-xl">
+              <h3 className="font-syne text-xl font-bold text-[var(--text-primary)] border-b border-[var(--border-primary)] pb-4">
                 Reservation Breakdown
               </h3>
 
               <div className="space-y-3">
                 <div className="text-xs">
-                  <span className="text-[#8A92A6] block">Studio:</span>
-                  <span className="text-white font-semibold">{targetSalon.name} ({targetSalon.subCity})</span>
+                  <span className="text-[var(--text-muted)] font-semibold block">Studio:</span>
+                  <span className="text-[var(--text-primary)] font-bold">{targetSalon.name} ({targetSalon.subCity})</span>
                 </div>
 
                 <div className="text-xs">
-                  <span className="text-[#8A92A6] block">Scheduled Slot:</span>
-                  <span className="text-[#E5B869] font-semibold">{appointmentDate} at {selectedTimeSlot}</span>
+                  <span className="text-[var(--text-muted)] font-semibold block">Scheduled Slot:</span>
+                  <span className="text-[var(--aura-gold)] font-bold">{appointmentDate} at {selectedTimeSlot}</span>
                 </div>
 
-                <div className="text-xs border-t border-[#222734] pt-3">
-                  <span className="text-[#8A92A6] block mb-2 font-semibold">Services Package:</span>
+                <div className="text-xs border-t border-[var(--border-primary)] pt-3">
+                  <span className="text-[var(--text-muted)] block mb-2 font-bold uppercase tracking-wider text-[10px]">
+                    Services Package:
+                  </span>
                   <div className="space-y-2">
                     {selectedServices.map((s) => (
                       <div key={s.id} className="flex justify-between text-xs">
-                        <span className="text-gray-300">{s.name}</span>
-                        <span className="text-[#E5B869] font-semibold">ETB {s.priceETB.toLocaleString()}</span>
+                        <span className="text-[var(--text-secondary)]">{s.name}</span>
+                        <span className="text-[var(--aura-gold)] font-bold">ETB {s.priceETB.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
@@ -571,13 +588,13 @@ function BookingForm() {
               </div>
 
               {/* Promo Code Input & Active Discount */}
-              <div className="border-t border-[#222734] pt-4 space-y-2.5">
+              <div className="border-t border-[var(--border-primary)] pt-4 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs text-[#8A92A6] uppercase tracking-wider font-semibold">
+                  <label className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-bold">
                     Promo / Voucher
                   </label>
                   {appliedPromo && (
-                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                       ACTIVE
                     </span>
                   )}
@@ -586,17 +603,17 @@ function BookingForm() {
                 {appliedPromo ? (
                   <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-mono font-bold text-emerald-300">
+                      <div className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300">
                         🏷️ {appliedPromo.code}
                       </div>
-                      <div className="text-[10px] text-emerald-400/80">
+                      <div className="text-[10px] text-emerald-600/90 dark:text-emerald-400/80">
                         {appliedPromo.discountDisplay} • {appliedPromo.title}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleRemovePromo}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-red-500/20 hover:text-red-400 text-emerald-300 transition-colors"
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-red-500/20 hover:text-red-500 text-emerald-700 dark:text-emerald-300 font-bold transition-colors"
                     >
                       ✕ Remove
                     </button>
@@ -617,12 +634,12 @@ function BookingForm() {
                         }
                       }}
                       placeholder="e.g. VIPSILK20"
-                      className="flex-1 bg-[#111318] border border-[#222734] focus:border-[#E5B869] rounded-xl px-3 py-2 text-xs text-white uppercase placeholder:normal-case placeholder:text-gray-500 focus:outline-none"
+                      className="flex-1 bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] uppercase placeholder:normal-case placeholder:text-[var(--text-muted)] focus:outline-none font-mono"
                     />
                     <button
                       type="button"
                       onClick={handleApplyPromo}
-                      className="px-4 py-2 rounded-xl bg-[#222734] hover:bg-[#E5B869] hover:text-[#0A0B0E] text-white text-xs font-bold transition-all"
+                      className="px-4 py-2 rounded-xl bg-[#222734] hover:bg-[#E5B869] hover:text-[#0A0B0E] text-white text-xs font-bold transition-all shadow-sm"
                     >
                       Apply
                     </button>
@@ -630,32 +647,32 @@ function BookingForm() {
                 )}
 
                 {promoError && (
-                  <p className="text-[11px] text-red-400 font-medium flex items-center gap-1">
+                  <p className="text-[11px] text-red-500 font-medium flex items-center gap-1">
                     <span>⚠️</span> {promoError}
                   </p>
                 )}
                 {promoSuccess && !promoError && (
-                  <p className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                     <span>✓</span> {promoSuccess}
                   </p>
                 )}
               </div>
 
               {/* Price Calculation Breakdown */}
-              <div className="border-t border-[#222734] pt-4 space-y-2">
-                <div className="flex justify-between items-center text-xs text-[#8A92A6]">
+              <div className="border-t border-[var(--border-primary)] pt-4 space-y-2">
+                <div className="flex justify-between items-center text-xs text-[var(--text-muted)]">
                   <span>Subtotal:</span>
-                  <span className="text-white font-medium">ETB {totalETB.toLocaleString()}</span>
+                  <span className="text-[var(--text-primary)] font-semibold">ETB {totalETB.toLocaleString()}</span>
                 </div>
                 {appliedPromo && discountAmountETB > 0 && (
-                  <div className="flex justify-between items-center text-xs text-emerald-400">
+                  <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400">
                     <span>Promo Discount ({appliedPromo.code}):</span>
-                    <span className="font-semibold">- ETB {discountAmountETB.toLocaleString()}</span>
+                    <span className="font-bold">- ETB {discountAmountETB.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center pt-2 border-t border-[#222734]/50">
-                  <span className="font-syne font-bold text-white text-base">Total Payment:</span>
-                  <span className="font-syne font-extrabold text-[#E5B869] text-xl">
+                <div className="flex justify-between items-center pt-2 border-t border-[var(--border-primary)]/50">
+                  <span className="font-syne font-bold text-[var(--text-primary)] text-base">Total Payment:</span>
+                  <span className="font-syne font-extrabold text-[var(--aura-gold)] text-xl">
                     ETB {finalTotalETB.toLocaleString()}
                   </span>
                 </div>
@@ -689,10 +706,10 @@ function BookingForm() {
             <span className="text-xs uppercase tracking-[0.2em] text-[#E5B869] font-bold">
               Appointment Verified
             </span>
-            <h2 className="text-3xl font-syne font-bold text-white">
+            <h2 className="text-3xl font-syne font-bold text-[var(--text-primary)]">
               Booking Confirmed!
             </h2>
-            <p className="text-xs text-[#8A92A6]">
+            <p className="text-xs text-[var(--text-secondary)]">
               Your reservation reference code is <span className="text-[#E5B869] font-bold font-mono text-sm">{confirmedBooking.bookingCode}</span>
             </p>
           </div>
@@ -706,7 +723,7 @@ function BookingForm() {
               unoptimized
             />
           </div>
-          <p className="text-[11px] text-[#8A92A6]">
+          <p className="text-[11px] text-[var(--text-muted)]">
             Present this QR code at {targetSalon.name} reception in {targetSalon.subCity} for instant express check-in.
           </p>
 
@@ -719,7 +736,7 @@ function BookingForm() {
             </Link>
             <Link
               href="/"
-              className="px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider bg-[#111318] border border-[#222734] text-white hover:border-[#E5B869]/50"
+              className="px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] text-[var(--text-primary)] hover:border-[#E5B869]/50"
             >
               Return Home
             </Link>
@@ -729,16 +746,16 @@ function BookingForm() {
 
       {/* AUTH INTERCEPTION MODAL (PHONE + OTP) */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 bg-[#0A0B0E]/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#111318] border border-[#E5B869]/40 rounded-3xl p-8 max-w-md w-full space-y-6 shadow-gold-glow animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--aura-gold)]/50 rounded-3xl p-8 max-w-md w-full space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="text-center space-y-2">
               <div className="w-12 h-12 rounded-full bg-[#E5B869]/20 text-[#E5B869] flex items-center justify-center mx-auto text-xl font-bold">
                 🔒
               </div>
-              <h3 className="font-syne text-2xl font-bold text-white">
+              <h3 className="font-syne text-2xl font-bold text-[var(--text-primary)]">
                 {otpStep === 'PHONE' ? 'Sign In to Complete Booking' : 'Verify Phone Number'}
               </h3>
-              <p className="text-xs text-[#8A92A6]">
+              <p className="text-xs text-[var(--text-secondary)]">
                 {otpStep === 'PHONE'
                   ? 'Enter your phone number to receive an instant OTP verification code.'
                   : `Enter the 6-digit verification code sent to ${phoneInput}`}
@@ -748,7 +765,7 @@ function BookingForm() {
             {otpStep === 'PHONE' ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#8A92A6] uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">
                     Ethiopia Phone Number
                   </label>
                   <input
@@ -757,7 +774,7 @@ function BookingForm() {
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
                     placeholder="+251 91 123 4567"
-                    className="w-full bg-[#0A0B0E] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none font-mono"
+                    className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono"
                   />
                 </div>
 
@@ -765,7 +782,7 @@ function BookingForm() {
                   <button
                     type="button"
                     onClick={() => setShowAuthModal(false)}
-                    className="w-1/2 py-3 rounded-full text-xs font-bold uppercase tracking-wider bg-[#161922] text-[#8A92A6] hover:text-white border border-[#222734]"
+                    className="w-1/2 py-3 rounded-full text-xs font-bold uppercase tracking-wider bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-primary)]"
                   >
                     Cancel
                   </button>
@@ -780,7 +797,7 @@ function BookingForm() {
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#8A92A6] uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">
                     6-Digit OTP Code
                   </label>
                   <input
@@ -790,9 +807,9 @@ function BookingForm() {
                     value={otpInput}
                     onChange={(e) => setOtpInput(e.target.value)}
                     placeholder="e.g. 123456"
-                    className="w-full bg-[#0A0B0E] border border-[#222734] focus:border-[#E5B869] rounded-xl px-4 py-3 text-white text-sm focus:outline-none font-mono text-center tracking-widest text-lg"
+                    className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono text-center tracking-widest text-lg"
                   />
-                  <p className="text-[11px] text-[#E5B869] mt-1 text-center font-mono">
+                  <p className="text-[11px] text-[var(--aura-gold)] mt-1 text-center font-mono font-bold">
                     Test Mode Code: 123456
                   </p>
                 </div>
@@ -801,7 +818,7 @@ function BookingForm() {
                   <button
                     type="button"
                     onClick={() => setOtpStep('PHONE')}
-                    className="w-1/2 py-3 rounded-full text-xs font-bold uppercase tracking-wider bg-[#161922] text-[#8A92A6] hover:text-white border border-[#222734]"
+                    className="w-1/2 py-3 rounded-full text-xs font-bold uppercase tracking-wider bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-primary)]"
                   >
                     Back
                   </button>
@@ -823,7 +840,7 @@ function BookingForm() {
 
 export default function BookingPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 text-white">Loading Booking Portal...</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-[var(--text-primary)]">Loading Booking Portal...</div>}>
       <BookingForm />
     </Suspense>
   );

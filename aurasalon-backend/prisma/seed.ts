@@ -214,20 +214,20 @@ async function main(): Promise<void> {
       city: 'Addis Ababa',
       latitude: 8.980,
       longitude: 38.740,
-      status: SalonStatus.PENDING_REVIEW,
+      status: SalonStatus.APPROVED,
       tinNumber: '0055555555',
       payoutBank: 'Telebirr',
       payoutAccount: '+251944444444',
-      isFeatured: false,
+      isFeatured: true,
       isActive: true,
       coverImageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
     },
   });
 
-  console.log('   ✅ Created 3 APPROVED Salons and 1 PENDING_REVIEW Salon.\n');
+  console.log('   ✅ Created APPROVED Salons across Bole, Sarbet, Kazanchis, and Old Airport.\n');
 
   // Create Shift Schedules (Working Hours) for Approved Salons
-  const approvedSalons = [salonA, salonA2, salonB, salonC];
+  const approvedSalons = [salonA, salonA2, salonB, salonC, salonD];
   for (const s of approvedSalons) {
     for (let day = 0; day <= 6; day++) {
       await prisma.workingHours.create({
