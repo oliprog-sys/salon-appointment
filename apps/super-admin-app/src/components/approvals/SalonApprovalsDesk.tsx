@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SalonApprovalItem, KycStatus } from '../../types';
+import { CheckIcon } from '../icons/Icons';
 
 interface SalonApprovalsDeskProps {
   initialApprovals: SalonApprovalItem[];
@@ -229,10 +230,19 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
 
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
                   <p className="font-bold text-emerald-900">Automatic Compliance Checklist:</p>
-                  <ul className="text-emerald-800 font-mono text-[11px] space-y-0.5">
-                    <li>✓ Ministry of Trade registration code valid</li>
-                    <li>✓ Sub-city zoning approval verified for {selectedKyc.subCity}</li>
-                    <li>✓ Taxpayer identification active</li>
+                  <ul className="text-emerald-800 font-mono text-[11px] space-y-1">
+                    <li className="flex items-center gap-1.5">
+                      <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Ministry of Trade registration code valid</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Sub-city zoning approval verified for {selectedKyc.subCity}</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <CheckIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Taxpayer identification active</span>
+                    </li>
                   </ul>
                 </div>
 

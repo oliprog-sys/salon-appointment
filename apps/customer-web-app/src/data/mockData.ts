@@ -2,10 +2,10 @@ import { Salon, Appointment } from '../types';
 
 export const MOCK_SALONS: Salon[] = [
   {
-    id: 's1',
-    name: 'Aura Luxe Sanctuary',
-    slug: 'aura-luxe-sanctuary',
-    description: 'Experience refined Ethiopian beauty and holistic wellness in the heart of Bole. Featuring bespoke braiding, organic spa treatments, and master hair styling.',
+    id: 'b045c798-6815-41fd-b784-a97c2e6aaeb0',
+    name: 'Queen Saba Luxury Lounge',
+    slug: 'queen-saba-luxury-lounge',
+    description: 'Experience refined Ethiopian beauty and holistic wellness sanctuary care in the heart of Bole. Featuring bespoke braiding, organic spa treatments, and master hair styling.',
     address: 'Bole Medhanialem, Next to Atlas Hotel',
     subCity: 'Bole',
     city: 'Addis Ababa',
@@ -14,106 +14,157 @@ export const MOCK_SALONS: Salon[] = [
     coverImageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80',
     gallery: [
       'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=800&q=80'
     ],
     isVerified: true,
     isFeatured: true,
     priceRange: 'ETB 800 - 3,500',
     workingHours: {
       day: 'Monday - Saturday',
-      time: '08:30 AM - 08:30 PM'
+      time: '08:30 AM - 08:30 PM',
     },
     staff: [
       {
         id: 'st1',
         fullName: 'Selamawit Tadesse',
-        title: 'Master Braider & Hair Artist',
+        title: 'Senior Hair Stylist & Silk Press Specialist',
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
         rating: 5.0,
-        isAvailable: true
+        isAvailable: true,
       },
       {
         id: 'st2',
-        fullName: 'Tigist Hailu',
-        title: 'Senior Aesthetician & Skin Care Specialist',
+        fullName: 'Eden Assefa',
+        title: 'Spa & Nail Esthetician',
         avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
         rating: 4.9,
-        isAvailable: true
+        isAvailable: true,
       },
       {
         id: 'st3',
-        fullName: 'Dawit Bekele',
-        title: 'Luxury Nail Specialist',
+        fullName: 'Abebe Bikila',
+        title: 'Master Grooming Specialist',
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
         rating: 4.8,
-        isAvailable: true
-      }
+        isAvailable: true,
+      },
     ],
     services: [
       {
         id: 'srv1',
-        salonId: 's1',
+        salonId: 'b045c798-6815-41fd-b784-a97c2e6aaeb0',
         categoryId: 'c1',
-        categoryName: 'Hair Braiding & Artistry',
+        categoryName: 'Hair Care & Styling',
         name: 'Signature Full Box Braids',
         description: 'Meticulously crafted box braids with organic hair nourishment oil and precision parting.',
         durationMin: 180,
-        priceETB: 2200
+        priceETB: 2200,
       },
       {
         id: 'srv2',
-        salonId: 's1',
+        salonId: 'b045c798-6815-41fd-b784-a97c2e6aaeb0',
         categoryId: 'c1',
-        categoryName: 'Hair Braiding & Artistry',
-        name: 'Crown Cornrow Artistry',
-        description: 'Traditional and modern hybrid cornrows tailored to your unique head silhouette.',
-        durationMin: 120,
-        priceETB: 1600
+        categoryName: 'Hair Care & Styling',
+        name: 'Royal Silk Press & Treatment',
+        description: 'Thermal straightening and silk press with deep hydration hair protein treatment.',
+        durationMin: 90,
+        priceETB: 1600,
       },
       {
         id: 'srv3',
-        salonId: 's1',
+        salonId: 'b045c798-6815-41fd-b784-a97c2e6aaeb0',
         categoryId: 'c2',
         categoryName: 'Luxury Spa & Massage',
         name: 'Aroma-Herbal Deep Tissue Massage',
         description: 'Full-body relaxation infused with local Ethiopian botanicals and eucalyptus steam session.',
         durationMin: 90,
-        priceETB: 3200
+        priceETB: 3200,
       },
       {
         id: 'srv4',
-        salonId: 's1',
+        salonId: 'b045c798-6815-41fd-b784-a97c2e6aaeb0',
         categoryId: 'c4',
         categoryName: 'Nails & Manicure',
         name: 'Gold Leaf Deluxe Gel Manicure',
         description: 'Exfoliating hand treatment with gel polish and 24k gold leaf accents.',
         durationMin: 60,
-        priceETB: 1200
-      }
-    ]
+        priceETB: 1200,
+      },
+    ],
+  },
+  {
+    id: 'fb3144c4-186e-4d26-a58b-181ccdddf5bb',
+    name: 'Queen Saba VIP Spa & Wellness',
+    slug: 'queen-saba-vip-spa-wellness',
+    description: 'Luxury spa retreat in Sarbet featuring private VIP suites, Moroccan baths, and holistic wellness therapy.',
+    address: 'Sarbet, Near South Africa Embassy & Vatican',
+    subCity: 'Sarbet',
+    city: 'Addis Ababa',
+    rating: 4.9,
+    reviewCount: 88,
+    coverImageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80',
+    ],
+    isVerified: true,
+    isFeatured: true,
+    priceRange: 'ETB 1,200 - 5,000',
+    workingHours: {
+      day: 'Everyday',
+      time: '09:00 AM - 09:00 PM',
+    },
+    staff: [
+      {
+        id: 'st-sarbet-1',
+        fullName: 'Meron Assefa',
+        title: 'Lead Spa & Moroccan Bath Therapist',
+        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+        rating: 5.0,
+        isAvailable: true,
+      },
+    ],
+    services: [
+      {
+        id: 'srv-sb1',
+        salonId: 'fb3144c4-186e-4d26-a58b-181ccdddf5bb',
+        categoryId: 'c2',
+        categoryName: 'Luxury Spa & Massage',
+        name: 'Royal Moroccan Hammam & Body Scrub',
+        description: 'Traditional black soap cleansing with eucalyptus steam and kessa glove exfoliation.',
+        durationMin: 90,
+        priceETB: 3500,
+      },
+      {
+        id: 'srv-sb2',
+        salonId: 'fb3144c4-186e-4d26-a58b-181ccdddf5bb',
+        categoryId: 'c5',
+        categoryName: 'Skin & Facial',
+        name: 'Gold Glow Facial Spa',
+        description: '24k gold infused micro-collagen firming and deep hydration therapy.',
+        durationMin: 75,
+        priceETB: 2800,
+      },
+    ],
   },
   {
     id: 's2',
-    name: 'Queen Saba Beauty Lounge',
-    slug: 'queen-saba-beauty-lounge',
-    description: 'A sanctuary dedicated to royal pampering in Kazanchis. Specializing in bridal makeup, hair steam treatments, and traditional Ethiopian honey wraps.',
-    address: 'Kazanchis, Near UNECA Main Entrance',
+    name: 'Kazanchis Glamour Studio',
+    slug: 'kazanchis-glamour-studio',
+    description: 'Modern urban studio in Kazanchis business district providing silk press, gel nail art, facial treatments, and executive haircuts.',
+    address: 'Kazanchis, Near Inter Luxury Hotel',
     subCity: 'Kazanchis',
     city: 'Addis Ababa',
     rating: 4.8,
     reviewCount: 94,
-    coverImageUrl: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=1200&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
     gallery: [
-      'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
     ],
     isVerified: true,
     isFeatured: true,
     priceRange: 'ETB 600 - 4,000',
     workingHours: {
       day: 'Everyday',
-      time: '09:00 AM - 08:00 PM'
+      time: '09:00 AM - 08:00 PM',
     },
     staff: [
       {
@@ -122,16 +173,8 @@ export const MOCK_SALONS: Salon[] = [
         title: 'Master Bridal Makeup Artist',
         avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
         rating: 4.9,
-        isAvailable: true
+        isAvailable: true,
       },
-      {
-        id: 'st5',
-        fullName: 'Rahel Assefa',
-        title: 'Hair Care & Treatment Specialist',
-        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
-        rating: 4.8,
-        isAvailable: true
-      }
     ],
     services: [
       {
@@ -142,19 +185,19 @@ export const MOCK_SALONS: Salon[] = [
         name: 'Royal Honey & Coffee Glow Facial',
         description: 'Deep pore cleansing utilizing pure Sidama honey and highland coffee exfoliation.',
         durationMin: 75,
-        priceETB: 1900
+        priceETB: 1900,
       },
       {
         id: 'srv6',
         salonId: 's2',
         categoryId: 'c1',
-        categoryName: 'Hair Braiding & Artistry',
+        categoryName: 'Hair Care & Styling',
         name: 'Keratin Silk Press & Style',
         description: 'Thermal straightening treatment ensuring glossy, featherlight natural hair movement.',
         durationMin: 90,
-        priceETB: 2500
-      }
-    ]
+        priceETB: 2500,
+      },
+    ],
   },
   {
     id: 's3',
@@ -169,14 +212,13 @@ export const MOCK_SALONS: Salon[] = [
     coverImageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80',
     gallery: [
       'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=800&q=80'
     ],
     isVerified: true,
     isFeatured: true,
     priceRange: 'ETB 500 - 2,200',
     workingHours: {
       day: 'Monday - Sunday',
-      time: '08:00 AM - 09:00 PM'
+      time: '08:00 AM - 09:00 PM',
     },
     staff: [
       {
@@ -185,8 +227,8 @@ export const MOCK_SALONS: Salon[] = [
         title: 'Executive Barber & Styling Director',
         avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
         rating: 5.0,
-        isAvailable: true
-      }
+        isAvailable: true,
+      },
     ],
     services: [
       {
@@ -197,40 +239,30 @@ export const MOCK_SALONS: Salon[] = [
         name: 'The Executive Cut & Beard Sculpt',
         description: 'Precision haircut, hot towel facial massage, beard lineup, and organic balm conditioning.',
         durationMin: 60,
-        priceETB: 1100
+        priceETB: 1100,
       },
-      {
-        id: 'srv8',
-        salonId: 's3',
-        categoryId: 'c3',
-        categoryName: 'Barber & Grooming',
-        name: 'Royal Black Charcoal Facial & Cut',
-        description: 'Deep black mask pore extraction accompanied by full styling and scalp massage.',
-        durationMin: 75,
-        priceETB: 1600
-      }
-    ]
+    ],
   },
   {
     id: 's4',
-    name: 'Piassa Vintage Beauty House',
-    slug: 'piassa-vintage-beauty-house',
-    description: 'Combining historic charm with modern aesthetic perfection in Piassa. Specializing in Afro styling, spa pedicures, and body therapy.',
-    address: 'Piassa, Churchill Avenue Commercial Center',
-    subCity: 'Piassa',
+    name: 'Sarbet Beauty Bar',
+    slug: 'sarbet-beauty-bar',
+    description: 'Boutique beauty bar in Sarbet specializing in premium silk press treatments, spa facials, nail artistry, and organic hair rituals.',
+    address: 'Sarbet, Near South Africa Embassy',
+    subCity: 'Sarbet',
     city: 'Addis Ababa',
     rating: 4.7,
     reviewCount: 74,
-    coverImageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=1200&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=1200&q=80',
     gallery: [
-      'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=800&q=80',
     ],
     isVerified: true,
     isFeatured: false,
     priceRange: 'ETB 450 - 2,800',
     workingHours: {
       day: 'Monday - Saturday',
-      time: '09:00 AM - 07:30 PM'
+      time: '09:00 AM - 07:30 PM',
     },
     staff: [
       {
@@ -239,8 +271,8 @@ export const MOCK_SALONS: Salon[] = [
         title: 'Pedicure & Reflexology Specialist',
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
         rating: 4.7,
-        isAvailable: true
-      }
+        isAvailable: true,
+      },
     ],
     services: [
       {
@@ -251,110 +283,240 @@ export const MOCK_SALONS: Salon[] = [
         name: 'Volcanic Stone Spa Pedicure',
         description: 'Warm volcanic stone foot massage with aromatic scrub and gel polish finish.',
         durationMin: 60,
-        priceETB: 1300
-      }
-    ]
+        priceETB: 1300,
+      },
+    ],
   },
   {
     id: 's5',
-    name: 'Sarbet Velvet Nail & Lash Bar',
-    slug: 'sarbet-velvet-nail-lash-bar',
-    description: 'Boutique beauty studio in Sarbet offering luxury lash extensions, acrylic nail extensions, and precision brows.',
-    address: 'Sarbet, Near South Africa Embassy',
-    subCity: 'Sarbet',
+    name: 'Old Airport Spa & Nails',
+    slug: 'old-airport-spa-nails',
+    description: 'Serene neighborhood salon in Old Airport offering deluxe gel manicures, natural botanical pedicures, and revitalizing face masks.',
+    address: 'Old Airport, Near Golf Club Road',
+    subCity: 'Old Airport',
     city: 'Addis Ababa',
-    rating: 4.9,
-    reviewCount: 112,
-    coverImageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=1200&q=80',
+    rating: 4.8,
+    reviewCount: 62,
+    coverImageUrl: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=1200&q=80',
     gallery: [
-      'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=800&q=80',
     ],
     isVerified: true,
-    isFeatured: true,
-    priceRange: 'ETB 700 - 3,200',
+    isFeatured: false,
+    priceRange: 'ETB 600 - 2,500',
     workingHours: {
-      day: 'Tuesday - Sunday',
-      time: '09:30 AM - 08:00 PM'
+      day: 'Monday - Saturday',
+      time: '09:00 AM - 07:00 PM',
     },
     staff: [
       {
-        id: 'st8',
-        fullName: 'Hiwot Kassa',
-        title: 'Master Lash Artist',
+        id: 'st-oa-1',
+        fullName: 'Kidist Tefera',
+        title: 'Senior Nail Artist',
         avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-        rating: 4.9,
-        isAvailable: true
-      }
+        rating: 4.8,
+        isAvailable: true,
+      },
     ],
     services: [
       {
-        id: 'srv10',
+        id: 'srv-oa-1',
         salonId: 's5',
-        categoryId: 'c5',
-        categoryName: 'Skin & Facial',
-        name: 'Volume Cashmere Lash Extension',
-        description: 'Featherlight Russian volume lashes with 4-week durability guarantee.',
-        durationMin: 120,
-        priceETB: 2800
-      }
-    ]
-  }
-];
-
-export const INITIAL_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'app-101',
-    bookingCode: 'AURA-9842',
-    salonId: 's1',
-    salonName: 'Aura Luxe Sanctuary',
-    salonAddress: 'Bole Medhanialem, Next to Atlas Hotel',
-    salonCoverImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80',
-    services: [
-      {
-        id: 'srv1',
-        salonId: 's1',
-        categoryId: 'c1',
-        name: 'Signature Full Box Braids',
-        description: 'Meticulously crafted box braids with organic hair nourishment oil',
-        durationMin: 180,
-        priceETB: 2200
-      }
+        categoryId: 'c4',
+        categoryName: 'Nails & Manicure',
+        name: 'Classic Russian Gel Manicure',
+        description: 'Precision cuticle cleaning, shaping, and long-lasting glossy gel polish.',
+        durationMin: 50,
+        priceETB: 950,
+      },
     ],
-    staffName: 'Selamawit Tadesse',
-    appointmentDate: '2026-10-05',
-    appointmentTime: '10:30 AM',
-    totalPriceETB: 2200,
-    status: 'CONFIRMED',
-    paymentMethod: 'TELEBIRR',
-    paymentStatus: 'SUCCESSFUL',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=AURA-9842',
-    createdAt: '2026-10-02T14:30:00Z'
   },
   {
-    id: 'app-102',
-    bookingCode: 'AURA-4119',
-    salonId: 's3',
-    salonName: 'Habesha Executive Gentlemen Grooming',
-    salonAddress: 'Old Airport, Opp. ICS International School',
-    salonCoverImage: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80',
+    id: 's6-unverified-gerji',
+    name: 'Luxe Glow Haven (Gerji)',
+    slug: 'luxe-glow-haven-gerji',
+    description: 'New neighborhood beauty studio in Gerji offering modern hair styling, braiding, and express facials. Currently undergoing platform verification audit.',
+    address: 'Gerji, Near Roba Bakery & Sunshine Real Estate',
+    subCity: 'Gerji',
+    city: 'Addis Ababa',
+    rating: 4.5,
+    reviewCount: 28,
+    coverImageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
+    ],
+    isVerified: false,
+    isFeatured: false,
+    priceRange: 'ETB 400 - 2,000',
+    workingHours: {
+      day: 'Monday - Saturday',
+      time: '08:30 AM - 07:00 PM',
+    },
+    staff: [
+      {
+        id: 'st-gerji-1',
+        fullName: 'Meseret Desta',
+        title: 'Braider & Hair Stylist',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        rating: 4.5,
+        isAvailable: true,
+      },
+    ],
     services: [
       {
-        id: 'srv7',
-        salonId: 's3',
-        categoryId: 'c3',
-        name: 'The Executive Cut & Beard Sculpt',
-        description: 'Precision haircut, hot towel facial massage',
-        durationMin: 60,
-        priceETB: 1100
-      }
+        id: 'srv-gerji-1',
+        salonId: 's6-unverified-gerji',
+        categoryId: 'c1',
+        categoryName: 'Hair Care & Styling',
+        name: 'Knotless Medium Box Braids',
+        description: 'Tension-free light knotless braids with shea butter scalp hydration.',
+        durationMin: 150,
+        priceETB: 1800,
+      },
     ],
-    staffName: 'Yared Alemu',
-    appointmentDate: '2026-09-28',
-    appointmentTime: '02:00 PM',
-    totalPriceETB: 1100,
-    status: 'COMPLETED',
-    paymentMethod: 'CBE_BIRR',
-    paymentStatus: 'SUCCESSFUL',
-    createdAt: '2026-09-25T11:00:00Z'
-  }
+  },
+  {
+    id: 's7-featured-cmc',
+    name: 'Eleni Botanical Hair & Spa (CMC)',
+    slug: 'eleni-botanical-hair-spa-cmc',
+    description: 'Premier holistic wellness and botanical hair studio in CMC. Famous for cold-pressed castor oil scalps, organic clay facials, and traditional Ethiopian steaming.',
+    address: 'CMC, Near Michael Roundabout',
+    subCity: 'CMC',
+    city: 'Addis Ababa',
+    rating: 4.9,
+    reviewCount: 119,
+    coverImageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=800&q=80',
+    ],
+    isVerified: true,
+    isFeatured: true,
+    priceRange: 'ETB 900 - 4,500',
+    workingHours: {
+      day: 'Tuesday - Sunday',
+      time: '09:00 AM - 08:30 PM',
+    },
+    staff: [
+      {
+        id: 'st-cmc-1',
+        fullName: 'Eleni Kebede',
+        title: 'Master Botanical Hair Director',
+        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+        rating: 4.9,
+        isAvailable: true,
+      },
+    ],
+    services: [
+      {
+        id: 'srv-cmc-1',
+        salonId: 's7-featured-cmc',
+        categoryId: 'c-botanical',
+        categoryName: 'Ethiopian Botanical Rituals',
+        name: 'Ethiopian Botanical Scalp & Hair Steaming',
+        description: 'Pure Argan and cold-pressed Ethiopian Koba oil steaming therapy for intense hair growth.',
+        durationMin: 75,
+        priceETB: 1750,
+      },
+      {
+        id: 'srv-cmc-2',
+        salonId: 's7-featured-cmc',
+        categoryId: 'c-botanical',
+        categoryName: 'Ethiopian Botanical Rituals',
+        name: 'Herbal Hot Koba Oil Full Body Massage',
+        description: 'Warm sesame and eucalyptus oil full body massage tailored for total muscle rejuvenation.',
+        durationMin: 90,
+        priceETB: 3400,
+      },
+    ],
+  },
+  {
+    id: 's8-unverified-piassa',
+    name: 'Arada Heritage Barber & Traditional Lounge',
+    slug: 'arada-heritage-barber-traditional-lounge',
+    description: 'Vintage community grooming and traditional hair cutting shop in historic Piassa. Specializing in hot towel beard shaves and classic skin tapers.',
+    address: 'Piassa, De Gaulle Square',
+    subCity: 'Piassa',
+    city: 'Addis Ababa',
+    rating: 4.4,
+    reviewCount: 35,
+    coverImageUrl: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=800&q=80',
+    ],
+    isVerified: false,
+    isFeatured: false,
+    priceRange: 'ETB 300 - 1,200',
+    workingHours: {
+      day: 'Monday - Saturday',
+      time: '08:00 AM - 07:00 PM',
+    },
+    staff: [
+      {
+        id: 'st-arada-1',
+        fullName: 'Fikadu Bekele',
+        title: 'Master Barber',
+        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+        rating: 4.4,
+        isAvailable: true,
+      },
+    ],
+    services: [
+      {
+        id: 'srv-arada-1',
+        salonId: 's8-unverified-piassa',
+        categoryId: 'c3',
+        categoryName: 'Barber & Grooming',
+        name: 'Traditional Hot Towel Cut & Shave',
+        description: 'Classic barber haircut with eucalyptus hot towel steam and straight razor cleanup.',
+        durationMin: 45,
+        priceETB: 500,
+      },
+    ],
+  },
+  {
+    id: 's9-mexico',
+    name: 'Addis Urban Beauty Studio (Mexico)',
+    slug: 'addis-urban-beauty-studio-mexico',
+    description: 'Chic express beauty parlor located in Mexico Square commercial zone, serving busy professionals with express blowouts, gel polish, and brow threading.',
+    address: 'Mexico Square, K-Kare Building',
+    subCity: 'Mexico',
+    city: 'Addis Ababa',
+    rating: 4.7,
+    reviewCount: 51,
+    coverImageUrl: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=800&q=80',
+    ],
+    isVerified: true,
+    isFeatured: false,
+    priceRange: 'ETB 500 - 2,400',
+    workingHours: {
+      day: 'Monday - Saturday',
+      time: '08:30 AM - 07:30 PM',
+    },
+    staff: [
+      {
+        id: 'st-mexico-1',
+        fullName: 'Genet Alemu',
+        title: 'Senior Hair & Brow Stylist',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        rating: 4.7,
+        isAvailable: true,
+      },
+    ],
+    services: [
+      {
+        id: 'srv-mex-1',
+        salonId: 's9-mexico',
+        categoryId: 'c1',
+        categoryName: 'Hair Care & Styling',
+        name: 'Executive Express Blowout & Style',
+        description: 'Shampoo, deep conditioning, and signature bouncy blowout finish.',
+        durationMin: 45,
+        priceETB: 850,
+      },
+    ],
+  },
 ];
+
+export const INITIAL_APPOINTMENTS: Appointment[] = [];

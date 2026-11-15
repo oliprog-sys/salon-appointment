@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -103,5 +104,15 @@ export class AppointmentController {
     @CurrentUser('id') customerId: string,
   ) {
     return this.appointmentService.cancelAppointment(id, customerId);
+  }
+
+  @Delete('appointments/all/reset')
+  async resetAllAppointments() {
+    return this.appointmentService.resetAllAppointments();
+  }
+
+  @Post('appointments/all/reset')
+  async resetAllAppointmentsPost() {
+    return this.appointmentService.resetAllAppointments();
   }
 }

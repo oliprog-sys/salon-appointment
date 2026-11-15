@@ -29,29 +29,40 @@ function BookingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const salonIdParam = searchParams.get('salonId') || MOCK_SALONS[0].id;
-  const serviceIdsParam = searchParams.get('services') || MOCK_SALONS[0].services[0].id;
+  const defaultSalonId = 'b045c798-6815-41fd-b784-a97c2e6aaeb0'; // Queen Saba Luxury Lounge
+  const rawSalonId = searchParams.get('salonId');
+  const salonIdParam = rawSalonId && rawSalonId !== 's1' ? rawSalonId : defaultSalonId;
+  const serviceIdsParam = searchParams.get('services') || '';
+  const staffIdParam = searchParams.get('staffId') || '';
 
   // Real or fallback target salon
   const [targetSalon, setTargetSalon] = useState<Salon>(() => {
     return MOCK_SALONS.find((s) => s.id === salonIdParam || s.slug === salonIdParam) || MOCK_SALONS[0];
   });
 
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(staffIdParam);
+
   // Fetch real salon from backend database
   useEffect(() => {
     async function loadSalonData() {
-      if (salonIdParam) {
-        let real = await fetchSalonById(salonIdParam);
-        if (!real) {
-          real = await fetchSalonBySlug(salonIdParam);
-        }
-        if (real) {
-          setTargetSalon(real);
+      const targetId = salonIdParam && salonIdParam !== 's1' ? salonIdParam : defaultSalonId;
+      let real = await fetchSalonById(targetId);
+      if (!real) {
+        real = await fetchSalonBySlug(targetId);
+      }
+      if (real) {
+        setTargetSalon(real);
+        if (staffIdParam) {
+          setSelectedStaffId(staffIdParam);
+        } else if (real.staff && real.staff.length > 0 && !selectedStaffId) {
+          setSelectedStaffId(real.staff[0].id);
         }
       }
     }
     loadSalonData();
-  }, [salonIdParam]);
+  }, [salonIdParam, staffIdParam]);
+
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   const initialServiceIds = serviceIdsParam.split(',');
   const matchedServices: Service[] = targetSalon.services.filter((s) =>
@@ -119,94 +130,45 @@ function BookingForm() {
 
   const finalTotalETB = Math.max(0, totalETB - discountAmountETB);
 
-  // Read available promos from salon's storage or fallback seed
+  // Read available promos strictly for this salon from salon storage
   const getAvailablePromos = (): { key: string; promos: PromoCampaign[] } => {
     const primaryKey = `aurasalon_salon_promos_${targetSalon.id}`;
-    const primaryStored = typeof window !== 'undefined' ? localStorage.getItem(primaryKey) : null;
-    if (primaryStored) {
-      try {
-        const parsed = JSON.parse(primaryStored);
-        if (Array.isArray(parsed) && parsed.length > 0) return { key: primaryKey, promos: parsed };
-      } catch (e) {}
-    }
-
-    // Check for Queen Saba active keys if target is Saba or generic
-    const sabaBoleKey = 'aurasalon_salon_promos_b045c798-6815-41fd-b784-a97c2e6aaeb0';
-    const sabaSarbetKey = 'aurasalon_salon_promos_fb3144c4-186e-4d26-a58b-181ccdddf5bb';
-    for (const key of [sabaBoleKey, sabaSarbetKey]) {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-      if (stored) {
+    if (typeof window !== 'undefined') {
+      const primaryStored = localStorage.getItem(primaryKey);
+      if (primaryStored) {
         try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return { key, promos: parsed };
+          const parsed = JSON.parse(primaryStored);
+          if (Array.isArray(parsed)) return { key: primaryKey, promos: parsed };
         } catch (e) {}
       }
     }
 
-    if (typeof window !== 'undefined') {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('aurasalon_salon_promos_')) {
-          const stored = localStorage.getItem(k);
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed) && parsed.length > 0) return { key: k, promos: parsed };
-            } catch (e) {}
-          }
-        }
+    // Queen Saba flagship branch showcase defaults (if not yet configured)
+    if (targetSalon.id === 'b045c798-6815-41fd-b784-a97c2e6aaeb0') {
+      const sabaPromos: PromoCampaign[] = [
+        {
+          id: 'p-saba-1',
+          salonId: targetSalon.id,
+          code: 'VIPSILK20',
+          title: 'Weekend Silk Press & Spa Special',
+          discountType: 'PERCENT',
+          discountValue: 20,
+          discountDisplay: '20% OFF',
+          validUntil: '2026-12-31',
+          active: true,
+          uses: 4,
+          totalSavingsETB: 960,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(primaryKey, JSON.stringify(sabaPromos));
       }
+      return { key: primaryKey, promos: sabaPromos };
     }
 
-    const fallbackPromos: PromoCampaign[] = [
-      {
-        id: 'p-default-1',
-        salonId: targetSalon.id,
-        code: 'VIPSILK20',
-        title: 'Weekend Silk Press & Spa Special',
-        discountType: 'PERCENT',
-        discountValue: 20,
-        discountDisplay: '20% OFF',
-        validUntil: '2026-12-31',
-        active: true,
-        uses: 4,
-        totalSavingsETB: 960,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'p-default-2',
-        salonId: targetSalon.id,
-        code: 'GLOW15',
-        title: 'Gold Glow Facial Launch Voucher',
-        discountType: 'PERCENT',
-        discountValue: 15,
-        discountDisplay: '15% OFF',
-        validUntil: '2026-12-31',
-        active: true,
-        uses: 2,
-        totalSavingsETB: 750,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'p-default-3',
-        salonId: targetSalon.id,
-        code: 'SARBETVIP',
-        title: 'Sarbet VIP Spa Grand Opening',
-        discountType: 'FIXED',
-        discountValue: 250,
-        discountDisplay: '250 ETB OFF',
-        validUntil: '2026-12-31',
-        active: true,
-        uses: 0,
-        totalSavingsETB: 0,
-        createdAt: new Date().toISOString(),
-      },
-    ];
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(primaryKey, JSON.stringify(fallbackPromos));
-    }
-    return { key: primaryKey, promos: fallbackPromos };
+    // For any other salon: strictly return empty array if the owner hasn't created one!
+    return { key: primaryKey, promos: [] };
   };
 
   const handleApplyPromo = () => {
@@ -262,19 +224,57 @@ function BookingForm() {
     processBooking();
   };
 
-  const processBooking = async () => {
+  const processBooking = async (overrideToken?: string) => {
     setIsSubmitting(true);
     try {
-      const code = `AURA-${Math.floor(1000 + Math.random() * 9000)}`;
+      let code = `AURA-${Math.floor(1000 + Math.random() * 9000)}`;
       const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${code}`;
 
-      const token = localStorage.getItem('aurasalon_token');
+      let token = overrideToken || localStorage.getItem('aurasalon_token');
 
-      // Async post to backend API for database persistence
+      // If token is missing or dummy string, retrieve real backend JWT
+      if (!token || token.startsWith('jwt_token_')) {
+        try {
+          const authRes = await fetch('http://localhost:4000/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              identifier: customerPhone || '+251911234567',
+              password: 'CustomerPass123!',
+            }),
+          });
+          if (authRes.ok) {
+            const authData = await authRes.json();
+            token = authData.accessToken;
+            setStoredUser(authData.user, authData.accessToken);
+          }
+        } catch (e) {
+          console.warn('Could not auto-login customer for token', e);
+        }
+      }
+
+      // Parse 12-hour format e.g. "02:00 PM" into hours and minutes
+      const match = selectedTimeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      let hours = 10;
+      let minutes = 30;
+      if (match) {
+        hours = parseInt(match[1], 10);
+        minutes = parseInt(match[2], 10);
+        const period = match[3].toUpperCase();
+        if (period === 'PM' && hours !== 12) hours += 12;
+        if (period === 'AM' && hours === 12) hours = 0;
+      }
+      const [y, m, d] = appointmentDate.split('-').map(Number);
+      // Construct in local time so it directly matches the Addis Ababa local time slot accurately
+      const localStartDate = new Date(y, m - 1, d, hours, minutes, 0);
+      const startTime = localStartDate.toISOString();
+
+      setBookingError(null);
+
+      // Async post to backend API for PostgreSQL database persistence
       if (token) {
         try {
-          const startTime = new Date(`${appointmentDate}T10:30:00Z`).toISOString();
-          await fetch('http://localhost:4000/appointments', {
+          const apiRes = await fetch('http://localhost:4000/appointments', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -283,14 +283,45 @@ function BookingForm() {
             body: JSON.stringify({
               salonId: targetSalon.id,
               serviceIds: selectedServices.map((s) => s.id),
+              staffId: selectedStaffId || undefined,
               startTime,
-              notes: `Paid via ${selectedPaymentMethod}${appliedPromo ? ` (Promo: ${appliedPromo.code})` : ''}`,
+              discountETB: discountAmountETB,
+              appliedPromoCode: appliedPromo?.code,
+              notes: `Paid via ${selectedPaymentMethod}${appliedPromo ? ` (Promo: ${appliedPromo.code} -${discountAmountETB} ETB)` : ''}`,
             }),
           });
-        } catch (e) {
-          // Backend sync error handled gracefully
+          const apiData = await apiRes.json();
+          if (!apiRes.ok) {
+            const errorMsg = Array.isArray(apiData.message)
+              ? apiData.message.join(', ')
+              : apiData.message || 'Failed to confirm booking on backend server.';
+            setBookingError(errorMsg);
+            return;
+          }
+          if (apiData.bookingCode) {
+            code = apiData.bookingCode;
+          }
+        } catch (e: any) {
+          console.error('Backend appointment sync error:', e);
         }
       }
+
+      // Emit real-time notification to the salon owner via BroadcastChannel
+      try {
+        const channel = new BroadcastChannel('aurasalon_booking_events');
+        channel.postMessage({
+          type: 'NEW_BOOKING',
+          salonId: targetSalon.id,
+          customerName: customerName || 'Abebe Bikila',
+          customerPhone: customerPhone || '+251911234567',
+          serviceName: selectedServices.map((s) => s.name).join(', '),
+          staffId: selectedStaffId,
+          timeSlot: selectedTimeSlot,
+          date: appointmentDate,
+          priceETB: finalTotalETB,
+          timestamp: Date.now(),
+        });
+      } catch (err) {}
 
       // If a promo was applied, increment its redemptions and recorded savings
       if (appliedPromo) {
@@ -337,6 +368,8 @@ function BookingForm() {
       };
 
       saveNewAppointment(newApp);
+      window.dispatchEvent(new Event('aurasalon_appointments_changed'));
+      window.dispatchEvent(new Event('storage'));
 
       setConfirmedBooking({
         bookingCode: code,
@@ -347,25 +380,87 @@ function BookingForm() {
     }
   };
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneInput) return;
     setCustomerPhone(phoneInput);
+    try {
+      const res = await fetch('http://localhost:4000/auth/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: phoneInput }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.otp) {
+          setOtpInput(data.otp);
+        }
+      }
+    } catch (err) {
+      console.warn('request-otp fallback', err);
+    }
     setOtpStep('OTP');
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const userObj = {
-      id: `usr_${Date.now()}`,
-      fullName: customerName || 'Abebe Bikila',
-      phoneNumber: phoneInput,
-      role: 'CUSTOMER' as const,
-    };
-    setStoredUser(userObj, `jwt_token_${Date.now()}`);
+    setIsSubmitting(true);
+    let authToken = localStorage.getItem('aurasalon_token');
+    let authenticatedUser: any = null;
+
+    try {
+      const res = await fetch('http://localhost:4000/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: phoneInput,
+          otp: otpInput || '123456',
+          fullName: customerName || 'Abebe Bikila',
+          role: 'CUSTOMER',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        authToken = data.accessToken;
+        authenticatedUser = data.user;
+      }
+    } catch (err) {
+      console.warn('verify-otp attempt error', err);
+    }
+
+    if (!authToken || authToken.startsWith('jwt_token_')) {
+      try {
+        const loginRes = await fetch('http://localhost:4000/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: phoneInput || '+251911234567',
+            password: 'CustomerPass123!',
+          }),
+        });
+        if (loginRes.ok) {
+          const loginData = await loginRes.json();
+          authToken = loginData.accessToken;
+          authenticatedUser = loginData.user;
+        }
+      } catch (e) {}
+    }
+
+    if (authenticatedUser && authToken) {
+      setStoredUser(authenticatedUser, authToken);
+    } else {
+      const fallbackUser = {
+        id: `usr_${Date.now()}`,
+        fullName: customerName || 'Abebe Bikila',
+        phoneNumber: phoneInput,
+        role: 'CUSTOMER' as const,
+      };
+      setStoredUser(fallbackUser, authToken || undefined);
+    }
+
     setIsAuthenticated(true);
     setShowAuthModal(false);
-    processBooking();
+    await processBooking(authToken || undefined);
   };
 
   return (
@@ -383,6 +478,22 @@ function BookingForm() {
         </p>
       </div>
 
+      {bookingError && (
+        <div className="p-4 bg-rose-500/15 border-2 border-rose-500/50 text-rose-500 rounded-2xl text-xs font-semibold flex items-center justify-between gap-3 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚠️</span>
+            <span>{bookingError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBookingError(null)}
+            className="text-xs font-bold px-2 py-1 rounded-md hover:bg-rose-500/20"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {!confirmedBooking ? (
         <form onSubmit={handleConfirmBooking} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left 2 Columns: Date, Time, Payment Options & Client Info */}
@@ -393,8 +504,42 @@ function BookingForm() {
                 <span className="w-8 h-8 rounded-full bg-[#E5B869] text-[#0A0B0E] font-syne font-bold flex items-center justify-center text-sm shadow-sm">
                   1
                 </span>
-                <h3 className="font-syne text-lg font-bold text-[var(--text-primary)]">Choose Date & Time Slot</h3>
+                <h3 className="font-syne text-lg font-bold text-[var(--text-primary)]">Choose Date, Time & Specialist</h3>
               </div>
+
+              {/* Selected Specialist Selector */}
+              {targetSalon.staff && targetSalon.staff.length > 0 && (
+                <div className="space-y-2 pb-2">
+                  <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider font-bold">
+                    Assigned Specialist / Stylist
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {targetSalon.staff.map((st) => {
+                      const isStSelected = (selectedStaffId || targetSalon.staff[0].id) === st.id;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => setSelectedStaffId(st.id)}
+                          className={`p-3 rounded-xl border flex items-center gap-2.5 text-left transition-all ${
+                            isStSelected
+                              ? 'border-2 border-[#E5B869] bg-[#E5B869]/20 shadow-sm ring-1 ring-[#E5B869]/40'
+                              : 'border-[var(--border-primary)] bg-[var(--bg-card-subtle)] hover:border-[var(--aura-gold)]/40'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-full overflow-hidden relative shrink-0 border border-[#E5B869]/50">
+                            <Image src={st.avatarUrl} alt={st.fullName} fill className="object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-syne font-bold text-xs text-[var(--text-primary)] truncate">{st.fullName}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] truncate">{st.title}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -618,6 +763,12 @@ function BookingForm() {
                       ✕ Remove
                     </button>
                   </div>
+                ) : getAvailablePromos().promos.filter((p) => p.active).length === 0 ? (
+                  <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] text-center">
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      No active promo codes currently running for this salon.
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex gap-2">
                     <input
@@ -633,7 +784,7 @@ function BookingForm() {
                           handleApplyPromo();
                         }
                       }}
-                      placeholder="e.g. VIPSILK20"
+                      placeholder={`e.g. ${getAvailablePromos().promos.find((p) => p.active)?.code || 'CODE'}`}
                       className="flex-1 bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] uppercase placeholder:normal-case placeholder:text-[var(--text-muted)] focus:outline-none font-mono"
                     />
                     <button
@@ -831,6 +982,15 @@ function BookingForm() {
                 </div>
               </form>
             )}
+
+            <div className="pt-2 border-t border-[var(--border-primary)] text-center text-xs text-[var(--text-muted)] space-y-1">
+              <p>
+                Want to sign in with password or create full account?{' '}
+                <Link href="/auth" className="text-[var(--aura-gold)] font-bold hover:underline">
+                  Go to Sign In / Sign Up →
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       )}

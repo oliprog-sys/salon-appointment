@@ -7,6 +7,7 @@ export interface UserProfile {
   email?: string;
   role: 'CUSTOMER' | 'SALON_OWNER' | 'SUPER_ADMIN';
   salonStatus?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  ownedSalons?: any[];
 }
 
 const AUTH_USER_KEY = 'aurasalon_user';

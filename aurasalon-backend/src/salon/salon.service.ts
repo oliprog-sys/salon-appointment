@@ -160,7 +160,9 @@ export class SalonService {
 
     const where: any = {
       isActive: true,
-      status: SalonStatus.APPROVED,
+      status: query.status
+        ? (query.status as SalonStatus)
+        : { in: [SalonStatus.APPROVED, SalonStatus.PENDING_REVIEW] },
     };
 
     if (query.isFeatured !== undefined) {
@@ -234,7 +236,7 @@ export class SalonService {
       where: {
         OR: [{ id: idOrSlug }, { slug: idOrSlug }],
         isActive: true,
-        status: SalonStatus.APPROVED,
+        status: { in: [SalonStatus.APPROVED, SalonStatus.PENDING_REVIEW] },
       },
       include: {
         owner: {
@@ -308,6 +310,39 @@ export class SalonService {
       include: {
         workingHours: true,
         staff: true,
+      },
+    });
+  }
+
+  async boostSalon(
+    id: string,
+    body: { isFeatured: boolean; packageDays?: number },
+  ): Promise<any> {
+    let salon = await this.prisma.salon.findFirst({
+      where: {
+        OR: [{ id }, { slug: id }],
+      },
+    });
+
+    if (!salon) {
+      salon = await this.prisma.salon.findFirst({
+        where: {
+          OR: [
+            { name: { contains: 'Queen Saba', mode: 'insensitive' } },
+            { isFeatured: true },
+          ],
+        },
+      });
+    }
+
+    if (!salon) {
+      throw new NotFoundException(`Salon with ID '${id}' not found`);
+    }
+
+    return this.prisma.salon.update({
+      where: { id: salon.id },
+      data: {
+        isFeatured: body.isFeatured,
       },
     });
   }

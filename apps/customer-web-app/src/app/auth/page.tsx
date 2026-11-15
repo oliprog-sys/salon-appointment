@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { setStoredUser } from '@/utils/authStore';
+import { EyeIcon, EyeOffIcon } from '@/components/icons/Icons';
 
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<'SIGN_IN' | 'SIGN_UP'>('SIGN_IN');
@@ -10,6 +11,7 @@ export default function AuthPage() {
   // Form Inputs
   const [identifier, setIdentifier] = useState(''); // Email or Phone Number
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -194,15 +196,30 @@ export default function AuthPage() {
                   <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1 font-bold">
                     Password *
                   </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-primary)] focus:border-[var(--aura-gold)] rounded-xl pl-4 pr-11 py-3 text-[var(--text-primary)] text-sm focus:outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOffIcon className="w-4 h-4 text-[var(--aura-gold)]" />
+                      ) : (
+                        <EyeIcon className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <button

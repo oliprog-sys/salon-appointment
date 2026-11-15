@@ -54,12 +54,8 @@ export function mapBackendSalonToCustomer(backendSalon: any): Salon {
           },
         ];
 
-  // Normalize subCity
-  const validSubCities: SubCity[] = ['Bole', 'Kazanchis', 'Piassa', 'Old Airport', 'Sarbet'];
-  const matchedSubCity =
-    validSubCities.find(
-      (sc) => sc.toLowerCase() === (backendSalon.subCity || '').toLowerCase().trim()
-    ) || 'Bole';
+  // Normalize subCity dynamically without restricting to legacy 5 districts
+  const normalizedSubCity = (backendSalon.subCity || 'Bole').trim();
 
   return {
     id: backendSalon.id,
@@ -68,8 +64,8 @@ export function mapBackendSalonToCustomer(backendSalon: any): Salon {
     description:
       backendSalon.description ||
       'Experience refined Ethiopian beauty and holistic wellness sanctuary care in Addis Ababa.',
-    address: backendSalon.address || `${matchedSubCity}, Addis Ababa`,
-    subCity: matchedSubCity,
+    address: backendSalon.address || `${normalizedSubCity}, Addis Ababa`,
+    subCity: normalizedSubCity,
     city: backendSalon.city || 'Addis Ababa',
     rating: 4.9,
     reviewCount: 94 + (backendSalon.id.charCodeAt(0) % 50),
@@ -84,7 +80,7 @@ export function mapBackendSalonToCustomer(backendSalon: any): Salon {
             'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
           ],
     isVerified: backendSalon.status === 'APPROVED' || backendSalon.isVerified === true,
-    isFeatured: backendSalon.isFeatured ?? true,
+    isFeatured: Boolean(backendSalon.isFeatured),
     priceRange,
     services,
     staff,

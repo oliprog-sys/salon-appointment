@@ -20,6 +20,11 @@ export default function SalonDetailPage({ params }: { params: Promise<{ slug: st
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<StaffProfile | null>(null);
 
+  // Always scroll to top on route change or when studio loads
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [resolvedParams.slug]);
+
   // Fetch real salon from backend database
   useEffect(() => {
     let isMounted = true;
@@ -28,8 +33,14 @@ export default function SalonDetailPage({ params }: { params: Promise<{ slug: st
         const data = await fetchSalonBySlug(resolvedParams.slug);
         if (isMounted && data) {
           setSalon(data);
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
           if (data.staff && data.staff.length > 0) {
-            setSelectedStaff(data.staff[0]);
+            setSelectedStaff((prev) => {
+              if (prev && data.staff.some((st: any) => st.id === prev.id)) {
+                return prev;
+              }
+              return data.staff[0];
+            });
           }
         }
       } catch (e) {
@@ -168,13 +179,25 @@ export default function SalonDetailPage({ params }: { params: Promise<{ slug: st
                     key={staffMember.id}
                     onClick={() => setSelectedStaff(staffMember)}
                     type="button"
-                    className={`glass-card p-4 rounded-2xl flex items-center gap-3 text-left transition-all duration-200 border ${
+                    className={`relative glass-card p-4 rounded-2xl flex items-center gap-3.5 text-left transition-all duration-200 cursor-pointer ${
                       isSelected
-                        ? 'border-[var(--aura-gold)] bg-[var(--aura-gold)]/10 shadow-sm'
-                        : 'border-[var(--border-primary)] hover:border-[var(--aura-gold)]/50'
+                        ? 'border-2 border-[#E5B869] bg-[#E5B869]/20 shadow-md ring-2 ring-[#E5B869]/40 text-[var(--text-primary)]'
+                        : 'border border-[var(--border-primary)] hover:border-[#E5B869]/60 hover:bg-[var(--bg-card-subtle)]'
                     }`}
                   >
-                    <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border border-[var(--aura-gold)]/40 shadow-sm">
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#E5B869] text-[#0A0B0E] text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
+                        <span>✓</span>
+                        <span>Selected</span>
+                      </div>
+                    )}
+                    <div
+                      className={`relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border-2 shadow-sm ${
+                        isSelected
+                          ? 'border-[#E5B869] ring-2 ring-[#E5B869]/40'
+                          : 'border-[var(--border-primary)]'
+                      }`}
+                    >
                       <Image
                         src={staffMember.avatarUrl}
                         alt={staffMember.fullName}
@@ -182,12 +205,20 @@ export default function SalonDetailPage({ params }: { params: Promise<{ slug: st
                         className="object-cover"
                       />
                     </div>
-                    <div>
-                      <h4 className="font-syne font-bold text-[var(--text-primary)] text-xs sm:text-sm">
+                    <div className="pr-10 sm:pr-0">
+                      <h4
+                        className={`font-syne text-xs sm:text-sm font-bold ${
+                          isSelected ? 'text-[var(--text-primary)] font-extrabold' : 'text-[var(--text-primary)]'
+                        }`}
+                      >
                         {staffMember.fullName}
                       </h4>
-                      <p className="text-[10px] text-[var(--text-muted)] line-clamp-1">{staffMember.title}</p>
-                      <span className="text-[10px] text-[var(--aura-gold)] font-bold">★ {staffMember.rating}</span>
+                      <p className="text-[11px] text-[var(--text-secondary)] font-medium line-clamp-1">
+                        {staffMember.title}
+                      </p>
+                      <span className="text-[11px] text-[var(--aura-gold)] font-bold">
+                        ★ {staffMember.rating}
+                      </span>
                     </div>
                   </button>
                 );
@@ -214,6 +245,7 @@ export default function SalonDetailPage({ params }: { params: Promise<{ slug: st
                       service={service}
                       isSelected={isSelected}
                       onSelect={toggleService}
+                      salon={salon}
                     />
                   );
                 })}

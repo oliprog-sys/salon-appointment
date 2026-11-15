@@ -61,6 +61,38 @@ function checkAppointmentOverdue(apt: Appointment): { isOverdue: boolean; minute
   return { isOverdue: false, minutesOver: 0 };
 }
 
+function playBookingChime() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now); // D5
+    osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(880, now + 0.15);
+    osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.35); // D6
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now + 0.15);
+    osc1.stop(now + 0.35);
+    osc2.stop(now + 0.6);
+  } catch (e) {}
+}
+
 export default function CalendarView({
   initialAppointments = [],
   staffList,
@@ -88,6 +120,19 @@ export default function CalendarView({
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
   const [isLoadingAppointments, setIsLoadingAppointments] = useState<boolean>(false);
+  const [newBookingAlert, setNewBookingAlert] = useState<{
+    customerName: string;
+    serviceName: string;
+    timeSlot: string;
+    priceETB: number;
+    date: string;
+  } | null>(null);
+  const [cancellationAlert, setCancellationAlert] = useState<{
+    customerName: string;
+    serviceName: string;
+    timeSlot: string;
+    date: string;
+  } | null>(null);
 
   // Shift Schedule: Day Shift (6am-6pm) vs Night Shift (6pm-6am)
   const [shift, setShift] = useState<'DAY' | 'NIGHT'>(() => {
@@ -237,10 +282,45 @@ export default function CalendarView({
     window.addEventListener('aurasalon_active_salon_changed', onSalonChange);
     window.addEventListener('storage', onAppChange);
 
+    // Instant cross-tab BroadcastChannel listener for incoming bookings
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('aurasalon_booking_events');
+      channel.onmessage = (event) => {
+        if (event.data && event.data.type === 'NEW_BOOKING') {
+          playBookingChime();
+          setNewBookingAlert({
+            customerName: event.data.customerName || 'A client',
+            serviceName: event.data.serviceName || 'Salon Service',
+            timeSlot: event.data.timeSlot || 'Scheduled Time',
+            priceETB: event.data.priceETB || 0,
+            date: event.data.date || selectedDate,
+          });
+          fetchAppointments(selectedDate);
+        } else if (event.data && event.data.type === 'APPOINTMENT_CANCELLED') {
+          playBookingChime();
+          setCancellationAlert({
+            customerName: event.data.customerName || 'A client',
+            serviceName: event.data.serviceName || 'Salon Service',
+            timeSlot: event.data.timeSlot || 'Scheduled Time',
+            date: event.data.date || selectedDate,
+          });
+          fetchAppointments(selectedDate);
+        }
+      };
+    } catch (e) {}
+
+    // 12-second periodic polling interval to sync database in real-time
+    const interval = setInterval(() => {
+      fetchAppointments(selectedDate);
+    }, 12000);
+
     return () => {
       window.removeEventListener('aurasalon_appointments_changed', onAppChange);
       window.removeEventListener('aurasalon_active_salon_changed', onSalonChange);
       window.removeEventListener('storage', onAppChange);
+      if (channel) channel.close();
+      clearInterval(interval);
     };
   }, [selectedDate, fetchAppointments]);
 
@@ -287,7 +367,7 @@ export default function CalendarView({
 
   // Calculated Real Database Metrics
   const totalRevenue = appointments
-    .filter((a) => a.status === 'CONFIRMED' || a.status === 'IN_PROGRESS' || a.status === 'COMPLETED')
+    .filter((a) => a.status === 'CONFIRMED' || a.status === 'IN_PROGRESS' || a.status === 'COMPLETED' || a.status === 'PENDING')
     .reduce((sum, a) => sum + (Number(a.priceETB) || 0), 0);
 
   const totalBookings = appointments.length;
@@ -351,6 +431,34 @@ export default function CalendarView({
     setCustomerName('');
     setCustomerPhone('');
     setNotes('');
+  };
+
+  const handleClearAllAppointments = async () => {
+    if (!confirm('Are you sure you want to clear all previous appointments to test the booking flow from scratch?')) return;
+    try {
+      setAppointments([]);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('aurasalon_appointments');
+        localStorage.removeItem('aurasalon_user_appointments');
+        window.dispatchEvent(new Event('aurasalon_appointments_changed'));
+      }
+      try {
+        await fetch('http://localhost:4000/appointments/all/reset', {
+          method: 'DELETE',
+        });
+      } catch (e) {}
+
+      const bc = typeof window !== 'undefined' && 'BroadcastChannel' in window
+        ? new BroadcastChannel('aurasalon_booking_events')
+        : null;
+      if (bc) {
+        bc.postMessage({ type: 'APPOINTMENTS_RESET' });
+      }
+
+      alert('All appointments cleared! The calendar is now completely fresh.');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const updateStatus = async (id: string, newStatus: AppointmentStatus) => {
@@ -434,6 +542,96 @@ export default function CalendarView({
 
   return (
     <div className="p-6 space-y-6">
+      {/* Live Direct Booking Notification Banner */}
+      {newBookingAlert && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-4 sm:p-5 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 border-2 border-emerald-400">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 text-white flex items-center justify-center text-2xl font-bold shrink-0 animate-bounce">
+              🔔
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                <p className="text-xs font-mono font-extrabold uppercase tracking-wider text-emerald-100">
+                  New Live Appointment Confirmed!
+                </p>
+              </div>
+              <p className="text-sm font-bold mt-1 text-white">
+                <span className="underline decoration-white/60">{newBookingAlert.customerName}</span> just booked{' '}
+                <span className="font-extrabold text-amber-200">{newBookingAlert.serviceName}</span> for{' '}
+                <span className="font-mono bg-black/20 px-2 py-0.5 rounded-md">{newBookingAlert.timeSlot}</span> on {newBookingAlert.date} (ETB {newBookingAlert.priceETB.toLocaleString()})
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDate(newBookingAlert.date);
+                setNewBookingAlert(null);
+              }}
+              className="px-4 py-2 bg-white text-emerald-900 text-xs font-extrabold rounded-xl shadow-md hover:bg-emerald-50 transition active:scale-95 cursor-pointer"
+            >
+              View on Timetable →
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewBookingAlert(null)}
+              className="text-white/80 hover:text-white p-1 text-sm transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Real-time Cancellation Notification Banner */}
+      {cancellationAlert && (
+        <div className="bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 text-white p-4 sm:p-5 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 border-2 border-rose-400">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 text-white flex items-center justify-center text-2xl font-bold shrink-0">
+              ℹ️
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                <p className="text-xs font-mono font-extrabold uppercase tracking-wider text-rose-100">
+                  Appointment Cancelled — Timetable Slot Released
+                </p>
+              </div>
+              <p className="text-sm font-bold mt-1 text-white">
+                <span className="underline decoration-white/60">{cancellationAlert.customerName}</span> cancelled their{' '}
+                <span className="font-extrabold text-amber-200">{cancellationAlert.serviceName}</span> booking for{' '}
+                <span className="font-mono bg-black/20 px-2 py-0.5 rounded-md">{cancellationAlert.timeSlot}</span> on {cancellationAlert.date}. The time slot is now open for new reservations!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDate(cancellationAlert.date);
+                setCancellationAlert(null);
+              }}
+              className="px-4 py-2 bg-white text-rose-900 text-xs font-extrabold rounded-xl shadow-md hover:bg-rose-50 transition active:scale-95 cursor-pointer"
+            >
+              View Available Slot →
+            </button>
+            <button
+              type="button"
+              onClick={() => setCancellationAlert(null)}
+              className="text-white/80 hover:text-white p-1 text-sm transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Real-time Overdue Notification Banner */}
       {overdueAppointments.length > 0 && (
         <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 text-amber-950 shadow-sm animate-in fade-in slide-in-from-top-2">
@@ -770,9 +968,23 @@ export default function CalendarView({
 
                       {/* Staff Columns */}
                       {displayStaffList.map((st, colIndex) => {
-                        const slotAppointments = filteredAppointments.filter(
-                          (a) => a.staffId === st.id && a.timeSlot === slot
-                        );
+                        const slotAppointments = filteredAppointments.filter((a) => {
+                          // Exclude CANCELLED bookings so the slot is instantly freed on the timetable
+                          if (a.status === 'CANCELLED') return false;
+                          const staffMatches = !a.staffId || a.staffId === st.id;
+                          if (!staffMatches) return false;
+                          if (a.timeSlot === slot) return true;
+                          const aptMatch = a.timeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                          const slotMatch = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                          if (aptMatch && slotMatch) {
+                            const aptH = parseInt(aptMatch[1], 10);
+                            const slotH = parseInt(slotMatch[1], 10);
+                            const aptP = aptMatch[3].toUpperCase();
+                            const slotP = slotMatch[3].toUpperCase();
+                            return aptH === slotH && aptP === slotP;
+                          }
+                          return false;
+                        });
 
                         return (
                           <td
@@ -929,7 +1141,12 @@ export default function CalendarView({
                         </td>
                         <td className="p-3.5 font-medium text-slate-800">{apt.staffName}</td>
                         <td className="p-3.5 font-mono font-extrabold text-slate-900 whitespace-nowrap">
-                          {apt.priceETB.toLocaleString()} ETB
+                          <p>{apt.priceETB.toLocaleString()} ETB</p>
+                          {apt.notes && apt.notes.includes('Promo') && (
+                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-sans font-semibold">
+                              🏷️ Promo Applied
+                            </span>
+                          )}
                         </td>
                         <td className="p-3.5">
                           <div className="flex items-center gap-2">

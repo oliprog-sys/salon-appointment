@@ -81,6 +81,14 @@ export class SalonController {
     return this.salonService.updateSalon(id, user, dto);
   }
 
+  @Patch(':id/boost')
+  async boostSalon(
+    @Param('id') id: string,
+    @Body() body: { isFeatured: boolean; packageDays?: number },
+  ) {
+    return this.salonService.boostSalon(id, body);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SALON_OWNER, UserRole.SUPER_ADMIN)

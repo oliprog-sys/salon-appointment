@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { EyeIcon, EyeOffIcon } from '@/components/icons/Icons';
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -108,14 +110,29 @@ export default function LoginPage() {
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-300">Password *</label>
               </div>
-              <input
-                type="password"
-                required
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full text-xs p-3 pr-10 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOffIcon className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <EyeIcon className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <button

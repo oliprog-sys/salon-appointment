@@ -5,11 +5,13 @@ import AdminSidebar from '../components/AdminSidebar';
 import AdminHeader from '../components/AdminHeader';
 import RevenueAnalytics from '../components/analytics/RevenueAnalytics';
 import { INITIAL_COMMISSION_LEDGERS } from '../data/mockData';
+import { EyeIcon, EyeOffIcon } from '../components/icons/Icons';
 
 export default function SuperAdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -103,14 +105,29 @@ export default function SuperAdminDashboard() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">Password *</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full text-xs p-3 pr-10 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOffIcon className="w-4 h-4 text-amber-600" />
+                    ) : (
+                      <EyeIcon className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button

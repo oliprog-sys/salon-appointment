@@ -37,11 +37,49 @@ export default function AppointmentsPage() {
     return true;
   });
 
-  const handleCancelAppointment = (id: string) => {
-    if (confirm('Are you sure you want to cancel this appointment?')) {
-      const updated = updateAppointmentStatusInStore(id, 'CANCELLED');
-      setAppointments(updated);
+  const handleCancelAppointment = async (id: string) => {
+    if (!confirm('Are you sure you want to cancel this appointment? This will release your time slot for other clients.')) {
+      return;
     }
+
+    const targetAppt = appointments.find((a) => a.id === id);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_token') : null;
+
+    // 1. Sync cancellation to PostgreSQL backend if real database ID
+    if (token && id && !id.startsWith('app_')) {
+      try {
+        await fetch(`http://localhost:4000/appointments/${id}/cancel`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } catch (e) {
+        console.warn('Backend cancel sync failed:', e);
+      }
+    }
+
+    // 2. Update local state and storage
+    const updated = updateAppointmentStatusInStore(id, 'CANCELLED');
+    setAppointments(updated);
+    window.dispatchEvent(new Event('aurasalon_appointments_changed'));
+    window.dispatchEvent(new Event('storage'));
+
+    // 3. Emit real-time notification to the salon owner via BroadcastChannel
+    try {
+      const ch = new BroadcastChannel('aurasalon_booking_events');
+      ch.postMessage({
+        type: 'APPOINTMENT_CANCELLED',
+        appointmentId: id,
+        salonId: targetAppt?.salonId,
+        customerName: targetAppt?.customerName || 'A client',
+        serviceName: targetAppt?.services?.[0]?.name || 'Salon Treatment',
+        timeSlot: targetAppt?.appointmentTime,
+        date: targetAppt?.appointmentDate,
+        priceETB: targetAppt?.totalPriceETB,
+        timestamp: Date.now(),
+      });
+    } catch (e) {}
   };
 
   const getStatusBadge = (status: AppointmentStatus) => {

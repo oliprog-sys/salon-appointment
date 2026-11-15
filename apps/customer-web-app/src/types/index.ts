@@ -1,4 +1,4 @@
-export type SubCity = 'Bole' | 'Kazanchis' | 'Piassa' | 'Old Airport' | 'Sarbet';
+export type SubCity = string;
 
 export interface Service {
   id: string;

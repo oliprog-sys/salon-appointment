@@ -21,7 +21,7 @@ const prisma = new PrismaClient({ adapter });
 
 async function main(): Promise<void> {
   console.log('===========================================================');
-  console.log('🌱 Starting AuraSalon Platform Database Seeding');
+  console.log('🌱 Starting AuraSalon Database Seeding (10 Real Studios)');
   console.log('===========================================================\n');
 
   // 1. Reset Existing Data in Reverse Dependency Order
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   await prisma.user.deleteMany();
   console.log('   ✅ Database successfully wiped.\n');
 
-  // Helper for password hashing
+  // Password hashing
   const saltRounds = 10;
   const superAdminPasswordHash = await bcrypt.hash('AdminPass123!', saltRounds);
   const ownerPasswordHash = await bcrypt.hash('OwnerPass123!', saltRounds);
@@ -61,13 +61,13 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     },
   });
-  console.log(`   ✅ Super Admin created: ${superAdmin.fullName} (${superAdmin.email})\n`);
+  console.log(`   ✅ Super Admin created: ${superAdmin.fullName}\n`);
 
   // 3. Realistic Salons & Owners across Sub-Cities
-  console.log('🏪 3. Creating Salons & Owners across Sub-Cities...');
+  console.log('🏪 3. Creating 10 Realistic Salons & Owners across Addis Ababa...');
 
-  // Salon Owner A
-  const ownerA = await prisma.user.create({
+  // Owner 1: Tigist Haile (Multi-location Owner: Bole & Sarbet)
+  const owner1 = await prisma.user.create({
     data: {
       fullName: 'Tigist Haile',
       phoneNumber: '+251911111111',
@@ -79,13 +79,14 @@ async function main(): Promise<void> {
     },
   });
 
-  const salonA = await prisma.salon.create({
+  // 1. Queen Saba Luxury Lounge (Bole) - Verified & Featured
+  const salon1 = await prisma.salon.create({
     data: {
-      ownerId: ownerA.id,
+      ownerId: owner1.id,
       name: 'Queen Saba Luxury Lounge',
       slug: 'queen-saba-luxury-lounge',
-      description: 'Addis Ababa premier luxury beauty lounge offering high-end hair styling, silk press treatments, gel manicures, and facial spa services.',
-      address: 'Bole sub-city, near Edna Mall, Addis Ababa',
+      description: 'Experience refined Ethiopian beauty and holistic wellness sanctuary care in the heart of Bole. Featuring bespoke braiding, organic spa treatments, and master hair styling.',
+      address: 'Bole Medhanialem, Next to Atlas Hotel, Addis Ababa',
       subCity: 'Bole',
       city: 'Addis Ababa',
       latitude: 8.9982,
@@ -97,21 +98,25 @@ async function main(): Promise<void> {
       isFeatured: true,
       isActive: true,
       coverImageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80',
+      gallery: [
+        'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+      ],
     },
   });
 
-  // Second branch owned by Tigist Haile (Multi-location Owner showcase)
-  const salonA2 = await prisma.salon.create({
+  // 2. Queen Saba VIP Spa & Wellness (Sarbet) - Verified & Featured
+  const salon2 = await prisma.salon.create({
     data: {
-      ownerId: ownerA.id,
+      ownerId: owner1.id,
       name: 'Queen Saba VIP Spa & Wellness',
       slug: 'queen-saba-vip-spa-wellness',
       description: 'Luxury spa retreat in Sarbet featuring private VIP suites, Moroccan baths, and holistic wellness therapy.',
-      address: 'Sarbet, near Vatican Embassy, Addis Ababa',
+      address: 'Sarbet, Near South Africa Embassy & Vatican, Addis Ababa',
       subCity: 'Sarbet',
       city: 'Addis Ababa',
       latitude: 8.9912,
-      longitude: 38.7450,
+      longitude: 38.745,
       status: SalonStatus.APPROVED,
       tinNumber: '0012345679',
       payoutBank: 'Telebirr / CBE',
@@ -119,11 +124,14 @@ async function main(): Promise<void> {
       isFeatured: true,
       isActive: true,
       coverImageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+      gallery: [
+        'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80',
+      ],
     },
   });
 
-  // Salon Owner B
-  const ownerB = await prisma.user.create({
+  // Owner 2: Dawit Kebede
+  const owner2 = await prisma.user.create({
     data: {
       fullName: 'Dawit Kebede',
       phoneNumber: '+251922222222',
@@ -135,13 +143,14 @@ async function main(): Promise<void> {
     },
   });
 
-  const salonB = await prisma.salon.create({
+  // 3. Kazanchis Glamour Studio (Kazanchis) - Verified & Featured
+  const salon3 = await prisma.salon.create({
     data: {
-      ownerId: ownerB.id,
+      ownerId: owner2.id,
       name: 'Kazanchis Glamour Studio',
       slug: 'kazanchis-glamour-studio',
       description: 'Modern urban studio in Kazanchis business district providing silk press, gel nail art, facial treatments, and executive haircuts.',
-      address: 'Kazanchis sub-city, near Inter Luxury Hotel, Addis Ababa',
+      address: 'Kazanchis, Near Inter Luxury Hotel & UNECA, Addis Ababa',
       subCity: 'Kazanchis',
       city: 'Addis Ababa',
       latitude: 9.018,
@@ -152,12 +161,50 @@ async function main(): Promise<void> {
       payoutAccount: '0087654321987',
       isFeatured: true,
       isActive: true,
+      coverImageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
+      gallery: [
+        'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+      ],
+    },
+  });
+
+  // Owner 3: Yared Tadesse
+  const owner3 = await prisma.user.create({
+    data: {
+      fullName: 'Yared Tadesse',
+      phoneNumber: '+251944444444',
+      email: 'yared@habeshagrooming.et',
+      role: UserRole.SALON_OWNER,
+      passwordHash: ownerPasswordHash,
+      isPhoneVerified: true,
+      isActive: true,
+    },
+  });
+
+  // 4. Habesha Executive Gentlemen Grooming (Old Airport) - Verified & Featured
+  const salon4 = await prisma.salon.create({
+    data: {
+      ownerId: owner3.id,
+      name: 'Habesha Executive Gentlemen Grooming',
+      slug: 'habesha-executive-gentlemen-grooming',
+      description: 'Addis Ababa’s premiere executive barbering studio in Old Airport. Hot towel shaves, precision fade cuts, and beard charcoal treatments.',
+      address: 'Old Airport, Opp. ICS International School, Addis Ababa',
+      subCity: 'Old Airport',
+      city: 'Addis Ababa',
+      latitude: 8.98,
+      longitude: 38.74,
+      status: SalonStatus.APPROVED,
+      tinNumber: '0044444444',
+      payoutBank: 'Telebirr',
+      payoutAccount: '+251944444444',
+      isFeatured: true,
+      isActive: true,
       coverImageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80',
     },
   });
 
-  // Salon Owner C
-  const ownerC = await prisma.user.create({
+  // Owner 4: Makeda Assefa
+  const owner4 = await prisma.user.create({
     data: {
       fullName: 'Makeda Assefa',
       phoneNumber: '+251933333333',
@@ -169,13 +216,14 @@ async function main(): Promise<void> {
     },
   });
 
-  const salonC = await prisma.salon.create({
+  // 5. Sarbet Beauty Bar (Sarbet) - Verified, Organic (isFeatured: false)
+  const salon5 = await prisma.salon.create({
     data: {
-      ownerId: ownerC.id,
+      ownerId: owner4.id,
       name: 'Sarbet Beauty Bar',
       slug: 'sarbet-beauty-bar',
-      description: 'Boutique beauty bar in Sarbet specializing in premium silk press treatments, spa facials, nail artistry, and grooming.',
-      address: 'Sarbet sub-city, near South Africa Embassy, Addis Ababa',
+      description: 'Boutique beauty bar in Sarbet specializing in premium silk press treatments, spa facials, nail artistry, and organic hair rituals.',
+      address: 'Sarbet, Near South Africa Embassy, Addis Ababa',
       subCity: 'Sarbet',
       city: 'Addis Ababa',
       latitude: 8.995,
@@ -190,12 +238,12 @@ async function main(): Promise<void> {
     },
   });
 
-  // Salon D (Pending Review)
-  const ownerD = await prisma.user.create({
+  // Owner 5: Bethlehem Worku
+  const owner5 = await prisma.user.create({
     data: {
-      fullName: 'Yared Tadesse',
-      phoneNumber: '+251944444444',
-      email: 'yared@oldairportspa.et',
+      fullName: 'Bethlehem Worku',
+      phoneNumber: '+251977777771',
+      email: 'bethlehem@oldairportnails.et',
       role: UserRole.SALON_OWNER,
       passwordHash: ownerPasswordHash,
       isPhoneVerified: true,
@@ -203,32 +251,186 @@ async function main(): Promise<void> {
     },
   });
 
-  const salonD = await prisma.salon.create({
+  // 6. Old Airport Spa & Nails (Old Airport) - Verified, Organic (isFeatured: false)
+  const salon6 = await prisma.salon.create({
     data: {
-      ownerId: ownerD.id,
+      ownerId: owner5.id,
       name: 'Old Airport Spa & Nails',
       slug: 'old-airport-spa-nails',
-      description: 'Upcoming luxury spa and nail boutique in Old Airport neighborhood currently awaiting admin review.',
-      address: 'Old Airport sub-city, Addis Ababa',
+      description: 'Serene neighborhood salon in Old Airport offering deluxe gel manicures, natural botanical pedicures, and revitalizing face masks.',
+      address: 'Old Airport, Near Golf Club Road, Addis Ababa',
       subCity: 'Old Airport',
       city: 'Addis Ababa',
-      latitude: 8.980,
-      longitude: 38.740,
+      latitude: 8.978,
+      longitude: 38.742,
       status: SalonStatus.APPROVED,
       tinNumber: '0055555555',
       payoutBank: 'Telebirr',
-      payoutAccount: '+251944444444',
-      isFeatured: true,
+      payoutAccount: '+251977777771',
+      isFeatured: false,
       isActive: true,
-      coverImageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80',
+      coverImageUrl: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=1200&q=80',
     },
   });
 
-  console.log('   ✅ Created APPROVED Salons across Bole, Sarbet, Kazanchis, and Old Airport.\n');
+  // Owner 6: Meseret Desta
+  const owner6 = await prisma.user.create({
+    data: {
+      fullName: 'Meseret Desta',
+      phoneNumber: '+251977777772',
+      email: 'meseret@luxeglow.et',
+      role: UserRole.SALON_OWNER,
+      passwordHash: ownerPasswordHash,
+      isPhoneVerified: true,
+      isActive: true,
+    },
+  });
 
-  // Create Shift Schedules (Working Hours) for Approved Salons
-  const approvedSalons = [salonA, salonA2, salonB, salonC, salonD];
-  for (const s of approvedSalons) {
+  // 7. Luxe Glow Haven (Gerji) - UNVERIFIED (PENDING_REVIEW), Organic
+  const salon7 = await prisma.salon.create({
+    data: {
+      ownerId: owner6.id,
+      name: 'Luxe Glow Haven (Gerji)',
+      slug: 'luxe-glow-haven-gerji',
+      description: 'New neighborhood beauty studio in Gerji offering modern hair styling, braiding, and express facials. Currently undergoing platform verification audit.',
+      address: 'Gerji, Near Roba Bakery & Sunshine Real Estate, Addis Ababa',
+      subCity: 'Gerji',
+      city: 'Addis Ababa',
+      latitude: 9.002,
+      longitude: 38.805,
+      status: SalonStatus.PENDING_REVIEW, // Demonstrates Unverified status
+      tinNumber: '0077777772',
+      payoutBank: 'Telebirr',
+      payoutAccount: '+251977777772',
+      isFeatured: false,
+      isActive: true,
+      coverImageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=1200&q=80',
+    },
+  });
+
+  // Owner 7: Eleni Kebede
+  const owner7 = await prisma.user.create({
+    data: {
+      fullName: 'Eleni Kebede',
+      phoneNumber: '+251977777773',
+      email: 'eleni@elenibotanical.et',
+      role: UserRole.SALON_OWNER,
+      passwordHash: ownerPasswordHash,
+      isPhoneVerified: true,
+      isActive: true,
+    },
+  });
+
+  // 8. Eleni Botanical Hair & Spa (CMC) - Verified & Featured
+  const salon8 = await prisma.salon.create({
+    data: {
+      ownerId: owner7.id,
+      name: 'Eleni Botanical Hair & Spa (CMC)',
+      slug: 'eleni-botanical-hair-spa-cmc',
+      description: 'Premier holistic wellness and botanical hair studio in CMC. Famous for cold-pressed castor oil scalps, organic clay facials, and silk styling.',
+      address: 'CMC, Near Michael Roundabout, Addis Ababa',
+      subCity: 'CMC',
+      city: 'Addis Ababa',
+      latitude: 9.025,
+      longitude: 38.835,
+      status: SalonStatus.APPROVED,
+      tinNumber: '0077777773',
+      payoutBank: 'Telebirr / Awash',
+      payoutAccount: '+251977777773',
+      isFeatured: true,
+      isActive: true,
+      coverImageUrl: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=1200&q=80',
+    },
+  });
+
+  // Owner 8: Fikadu Bekele
+  const owner8 = await prisma.user.create({
+    data: {
+      fullName: 'Fikadu Bekele',
+      phoneNumber: '+251977777774',
+      email: 'fikadu@aradaheritage.et',
+      role: UserRole.SALON_OWNER,
+      passwordHash: ownerPasswordHash,
+      isPhoneVerified: true,
+      isActive: true,
+    },
+  });
+
+  // 9. Arada Heritage Barber & Traditional Lounge (Piassa) - UNVERIFIED (PENDING_REVIEW), Organic
+  const salon9 = await prisma.salon.create({
+    data: {
+      ownerId: owner8.id,
+      name: 'Arada Heritage Barber & Traditional Lounge',
+      slug: 'arada-heritage-barber-traditional-lounge',
+      description: 'Vintage community grooming and traditional hair cutting shop in historic Piassa. Specializing in hot towel beard shaves and classic skin tapers.',
+      address: 'Piassa, De Gaulle Square, Churchill Avenue, Addis Ababa',
+      subCity: 'Piassa',
+      city: 'Addis Ababa',
+      latitude: 9.035,
+      longitude: 38.752,
+      status: SalonStatus.PENDING_REVIEW, // Demonstrates Unverified status
+      tinNumber: '0077777774',
+      payoutBank: 'Telebirr',
+      payoutAccount: '+251977777774',
+      isFeatured: false,
+      isActive: true,
+      coverImageUrl: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1200&q=80',
+    },
+  });
+
+  // Owner 9: Genet Alemu
+  const owner9 = await prisma.user.create({
+    data: {
+      fullName: 'Genet Alemu',
+      phoneNumber: '+251977777775',
+      email: 'genet@addisurban.et',
+      role: UserRole.SALON_OWNER,
+      passwordHash: ownerPasswordHash,
+      isPhoneVerified: true,
+      isActive: true,
+    },
+  });
+
+  // 10. Addis Urban Beauty Studio (Mexico) - Verified, Organic
+  const salon10 = await prisma.salon.create({
+    data: {
+      ownerId: owner9.id,
+      name: 'Addis Urban Beauty Studio (Mexico)',
+      slug: 'addis-urban-beauty-studio-mexico',
+      description: 'Chic express beauty parlor located in Mexico Square commercial zone, serving busy professionals with express blowouts, gel polish, and brow threading.',
+      address: 'Mexico Square, K-Kare Building, Addis Ababa',
+      subCity: 'Mexico',
+      city: 'Addis Ababa',
+      latitude: 9.01,
+      longitude: 38.745,
+      status: SalonStatus.APPROVED,
+      tinNumber: '0077777775',
+      payoutBank: 'CBE Birr',
+      payoutAccount: '+251977777775',
+      isFeatured: false,
+      isActive: true,
+      coverImageUrl: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80',
+    },
+  });
+
+  const allSalons = [
+    salon1,
+    salon2,
+    salon3,
+    salon4,
+    salon5,
+    salon6,
+    salon7,
+    salon8,
+    salon9,
+    salon10,
+  ];
+
+  console.log('   ✅ 10 Salons created across Bole, Sarbet, Kazanchis, Old Airport, Gerji, CMC, Piassa, and Mexico.\n');
+
+  // 4. Create Shift Schedules (Working Hours) for all 10 Salons
+  console.log('⏰ 4. Attaching working hours schedule to each salon...');
+  for (const s of allSalons) {
     for (let day = 0; day <= 6; day++) {
       await prisma.workingHours.create({
         data: {
@@ -241,11 +443,10 @@ async function main(): Promise<void> {
       });
     }
   }
+  console.log('   ✅ Working hours schedules attached.\n');
 
-  // 4. Realistic Services (ETB Currency) attached to each approved salon
-  console.log('💈 4. Attaching realistic ETB services to each approved salon...');
-
-  // Standard service definition template
+  // 5. Create Services for all 10 Salons
+  console.log('💈 5. Attaching realistic services & categories to each salon...');
   const standardServicesSpec = [
     {
       name: 'Royal Silk Press & Treatment',
@@ -277,24 +478,22 @@ async function main(): Promise<void> {
     },
   ];
 
-  // Map to store created services per salon: salonId -> Map<serviceName, serviceRecord>
   const salonServicesMap = new Map<string, Map<string, any>>();
 
-  for (const salon of approvedSalons) {
-    const serviceMap = new Map<string, any>();
-    
-    // Create categories first
+  for (const s of allSalons) {
+    const sMap = new Map<string, any>();
+
     const hairCat = await prisma.category.create({
-      data: { salonId: salon.id, name: 'Hair Care & Styling', sortOrder: 1 },
+      data: { salonId: s.id, name: 'Hair Care & Styling', sortOrder: 1 },
     });
     const nailCat = await prisma.category.create({
-      data: { salonId: salon.id, name: 'Nail & Hand Care', sortOrder: 2 },
+      data: { salonId: s.id, name: 'Nail & Hand Care', sortOrder: 2 },
     });
     const spaCat = await prisma.category.create({
-      data: { salonId: salon.id, name: 'Facial & Spa Therapy', sortOrder: 3 },
+      data: { salonId: s.id, name: 'Facial & Spa Therapy', sortOrder: 3 },
     });
     const barberCat = await prisma.category.create({
-      data: { salonId: salon.id, name: 'Barber & Grooming', sortOrder: 4 },
+      data: { salonId: s.id, name: 'Barber & Grooming', sortOrder: 4 },
     });
 
     const categoryMap: Record<string, string> = {
@@ -307,7 +506,7 @@ async function main(): Promise<void> {
     for (const spec of standardServicesSpec) {
       const createdService = await prisma.service.create({
         data: {
-          salonId: salon.id,
+          salonId: s.id,
           categoryId: categoryMap[spec.categoryName],
           name: spec.name,
           description: spec.description,
@@ -316,113 +515,120 @@ async function main(): Promise<void> {
           isActive: true,
         },
       });
-      serviceMap.set(spec.name, createdService);
+      sMap.set(spec.name, createdService);
     }
-
-    salonServicesMap.set(salon.id, serviceMap);
+    salonServicesMap.set(s.id, sMap);
   }
-  console.log('   ✅ 4 services attached to each approved salon.\n');
 
-  // 5. Specialist Staff Rosters with assigned specialties & working shift schedules
-  console.log('👩‍🔬 5. Creating Specialist Staff Rosters for each approved salon...');
+  // Attach specialized Ethiopian Botanical Rituals specifically to Eleni Botanical Hair & Spa (salon8)
+  const botanicalCat = await prisma.category.create({
+    data: { salonId: salon8.id, name: 'Ethiopian Botanical Rituals', sortOrder: 5 },
+  });
+  await prisma.service.create({
+    data: {
+      salonId: salon8.id,
+      categoryId: botanicalCat.id,
+      name: 'Ethiopian Botanical Scalp & Hair Steaming',
+      description: 'Pure Argan and cold-pressed Ethiopian Koba oil steaming therapy for intense hair growth.',
+      durationMin: 75,
+      priceETB: new Prisma.Decimal('1750.00'),
+      isActive: true,
+    },
+  });
+  await prisma.service.create({
+    data: {
+      salonId: salon8.id,
+      categoryId: botanicalCat.id,
+      name: 'Herbal Hot Koba Oil Full Body Massage',
+      description: 'Warm sesame and eucalyptus oil full body massage tailored for total muscle rejuvenation.',
+      durationMin: 90,
+      priceETB: new Prisma.Decimal('3400.00'),
+      isActive: true,
+    },
+  });
+  console.log('   ✅ 4 standard services created for each salon + Ethiopian Botanical Rituals attached to Eleni.\n');
 
-  const staffDefinitions = [
-    // Salon A: Queen Saba Luxury Lounge
+  // 6. Specialist Staff Members
+  console.log('👩‍🔬 6. Creating staff profiles for salons...');
+  const staffSpecs = [
     {
-      salonId: salonA.id,
+      salonId: salon1.id,
       fullName: 'Selamawit Tadesse',
       phoneNumber: '+251921111111',
-      email: 'selamawit@queensaba.et',
       title: 'Senior Hair Stylist & Silk Press Specialist',
-      bio: 'Specializes in Royal Silk Press & Treatment. Working Shift: Mon-Fri 08:30 - 17:00.',
-      specialties: ['Royal Silk Press & Treatment', 'Gel Manicure & Nail Art'],
+      bio: 'Over 8 years experience in bespoke natural hair care.',
     },
     {
-      salonId: salonA.id,
+      salonId: salon1.id,
       fullName: 'Eden Assefa',
       phoneNumber: '+251921111112',
-      email: 'eden@queensaba.et',
       title: 'Spa & Nail Esthetician',
-      bio: 'Specializes in Gel Manicures and Gold Glow Facial Spa. Working Shift: Tue-Sat 09:00 - 18:00.',
-      specialties: ['Gel Manicure & Nail Art', 'Gold Glow Facial Spa'],
+      bio: 'Expert in deluxe gel manicures and gold facials.',
     },
     {
-      salonId: salonA.id,
+      salonId: salon1.id,
       fullName: 'Abebe Bikila',
       phoneNumber: '+251921111113',
-      email: 'abebe@queensaba.et',
       title: 'Master Grooming Specialist',
-      bio: "Specializes in Gentlemen's Executive Cuts & Beard Trimming. Working Shift: Mon-Sat 08:30 - 17:30.",
-      specialties: ["Gentlemen's Executive Haircut & Beard Trim"],
-    },
-
-    // Salon B: Kazanchis Glamour Studio
-    {
-      salonId: salonB.id,
-      fullName: 'Tewodros Kassaye',
-      phoneNumber: '+251927777771',
-      email: 'tewodros@kazanchisglam.et',
-      title: 'Executive Barber',
-      bio: "Specializes in Gentlemen's Executive Haircut & Beard Trim. Working Shift: Mon-Fri 08:30 - 16:30.",
-      specialties: ["Gentlemen's Executive Haircut & Beard Trim"],
+      bio: 'Specialist in precision fades and beard sculpting.',
     },
     {
-      salonId: salonB.id,
-      fullName: 'Bethlehem Worku',
-      phoneNumber: '+251927777772',
-      email: 'bethlehem@kazanchisglam.et',
-      title: 'Senior Hair Stylist',
-      bio: 'Specializes in Royal Silk Press & Hair Care. Working Shift: Tue-Sat 09:30 - 18:00.',
-      specialties: ['Royal Silk Press & Treatment', 'Gel Manicure & Nail Art'],
-    },
-    {
-      salonId: salonB.id,
-      fullName: 'Eyerusalem Teshale',
-      phoneNumber: '+251927777773',
-      email: 'eyerusalem@kazanchisglam.et',
-      title: 'Lead Facial Esthetician',
-      bio: 'Specializes in Gold Glow Facial Spa & Skincare. Working Shift: Mon-Sat 10:00 - 18:00.',
-      specialties: ['Gold Glow Facial Spa', 'Gel Manicure & Nail Art'],
-    },
-
-    // Salon C: Sarbet Beauty Bar
-    {
-      salonId: salonC.id,
-      fullName: 'Helen Girmay',
-      phoneNumber: '+251928888881',
-      email: 'helen@sarbetbeauty.et',
-      title: 'Master Nail Artist',
-      bio: 'Specializes in Gel Manicures & Nail Artistry. Working Shift: Mon-Fri 09:00 - 17:00.',
-      specialties: ['Gel Manicure & Nail Art', 'Gold Glow Facial Spa'],
-    },
-    {
-      salonId: salonC.id,
-      fullName: 'Yonas Solomon',
-      phoneNumber: '+251928888882',
-      email: 'yonas@sarbetbeauty.et',
-      title: 'Executive Barber & Stylist',
-      bio: "Specializes in Gentlemen's Executive Cuts. Working Shift: Tue-Sun 09:00 - 18:00.",
-      specialties: ["Gentlemen's Executive Haircut & Beard Trim", 'Royal Silk Press & Treatment'],
-    },
-    {
-      salonId: salonC.id,
+      salonId: salon2.id,
       fullName: 'Meron Assefa',
-      phoneNumber: '+251928888883',
-      email: 'meron@sarbetbeauty.et',
-      title: 'Senior Spa & Skincare Therapist',
-      bio: 'Specializes in Gold Glow Facial Spa. Working Shift: Mon-Sat 09:30 - 17:30.',
-      specialties: ['Gold Glow Facial Spa', 'Royal Silk Press & Treatment'],
+      phoneNumber: '+251921111114',
+      title: 'Lead Spa & Moroccan Bath Therapist',
+      bio: 'Certified hammam and holistic wellness therapist.',
+    },
+    {
+      salonId: salon3.id,
+      fullName: 'Tewodros Kassaye',
+      phoneNumber: '+251921111115',
+      title: 'Executive Barber',
+      bio: 'High-end styling and hot towel beard conditioning.',
+    },
+    {
+      salonId: salon4.id,
+      fullName: 'Yared Alemu',
+      phoneNumber: '+251921111116',
+      title: 'Executive Barber & Director',
+      bio: 'Master barbering with 10+ years experience.',
+    },
+    {
+      salonId: salon5.id,
+      fullName: 'Helen Moges',
+      phoneNumber: '+251921111117',
+      title: 'Pedicure & Reflexology Specialist',
+      bio: 'Volcanic stone spa pedicures and reflexology.',
+    },
+    {
+      salonId: salon6.id,
+      fullName: 'Kidist Tefera',
+      phoneNumber: '+251921111118',
+      title: 'Senior Nail Artist',
+      bio: 'Russian manicures and luxury nail art.',
+    },
+    {
+      salonId: salon7.id,
+      fullName: 'Meseret Desta',
+      phoneNumber: '+251921111119',
+      title: 'Braider & Hair Stylist',
+      bio: 'Knotless box braids and organic oil treatments.',
+    },
+    {
+      salonId: salon8.id,
+      fullName: 'Eleni Kebede',
+      phoneNumber: '+251921111120',
+      title: 'Master Botanical Director',
+      bio: 'Cold-pressed castor and koba oil steam therapy.',
     },
   ];
 
-  const seededStaffSummary: any[] = [];
-
-  for (const sDef of staffDefinitions) {
+  for (const st of staffSpecs) {
     const user = await prisma.user.create({
       data: {
-        fullName: sDef.fullName,
-        phoneNumber: sDef.phoneNumber,
-        email: sDef.email,
+        fullName: st.fullName,
+        phoneNumber: st.phoneNumber,
+        email: `${st.fullName.toLowerCase().replace(/\s+/g, '.')}@aurasalon.et`,
         role: UserRole.STAFF,
         passwordHash: staffPasswordHash,
         isPhoneVerified: true,
@@ -430,36 +636,24 @@ async function main(): Promise<void> {
       },
     });
 
-    const sMap = salonServicesMap.get(sDef.salonId)!;
-    const connectIds = sDef.specialties
-      .map((specName) => sMap.get(specName)?.id)
-      .filter(Boolean)
-      .map((id) => ({ id }));
+    const sMap = salonServicesMap.get(st.salonId);
+    const firstService = sMap ? Array.from(sMap.values())[0] : null;
 
-    const profile = await prisma.staffProfile.create({
+    await prisma.staffProfile.create({
       data: {
         userId: user.id,
-        salonId: sDef.salonId,
-        title: sDef.title,
-        bio: sDef.bio,
+        salonId: st.salonId,
+        title: st.title,
+        bio: st.bio,
         isAvailable: true,
-        services: {
-          connect: connectIds,
-        },
+        services: firstService ? { connect: [{ id: firstService.id }] } : undefined,
       },
     });
-
-    seededStaffSummary.push({
-      Name: sDef.fullName,
-      Title: sDef.title,
-      SalonId: sDef.salonId,
-      Specialties: sDef.specialties.join(', '),
-    });
   }
-  console.log('   ✅ Created 9 specialist staff profiles attached to respective salons.\n');
+  console.log('   ✅ Specialist staff profiles created and assigned.\n');
 
-  // 6. Clean Customer Accounts
-  console.log('👥 6. Creating Clean Customer Accounts...');
+  // 7. Clean Customer Accounts (Blen Worku & Kaleb Solomon)
+  console.log('👥 7. Creating Test Customer Accounts...');
   const customer1 = await prisma.user.create({
     data: {
       fullName: 'Blen Worku',
@@ -485,59 +679,21 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     },
   });
-  console.log('   ✅ Created test customer accounts: Blen Worku & Kaleb Solomon.\n');
+  console.log('   ✅ Test customer accounts created (0 previous appointments).\n');
 
-  // 7. Formatted Summary Table Output
+  // 8. Seeding Summary
   console.log('===========================================================');
-  console.log('📊 DATABASE SEEDING SUMMARY');
-  console.log('===========================================================\n');
-
-  console.log('--- 1. USERS & ACCOUNTS ---');
-  console.table([
-    { FullName: superAdmin.fullName, Email: superAdmin.email, Phone: superAdmin.phoneNumber, Role: superAdmin.role },
-    { FullName: ownerA.fullName, Email: ownerA.email, Phone: ownerA.phoneNumber, Role: ownerA.role },
-    { FullName: ownerB.fullName, Email: ownerB.email, Phone: ownerB.phoneNumber, Role: ownerB.role },
-    { FullName: ownerC.fullName, Email: ownerC.email, Phone: ownerC.phoneNumber, Role: ownerC.role },
-    { FullName: ownerD.fullName, Email: ownerD.email, Phone: ownerD.phoneNumber, Role: ownerD.role },
-    { FullName: customer1.fullName, Email: customer1.email, Phone: customer1.phoneNumber, Role: customer1.role },
-    { FullName: customer2.fullName, Email: customer2.email, Phone: customer2.phoneNumber, Role: customer2.role },
-  ]);
-
-  console.log('\n--- 2. SALONS ---');
-  console.table([
-    { SalonName: salonA.name, SubCity: salonA.subCity, Owner: ownerA.fullName, Status: salonA.status, TIN: salonA.tinNumber, Payout: salonA.payoutBank },
-    { SalonName: salonB.name, SubCity: salonB.subCity, Owner: ownerB.fullName, Status: salonB.status, TIN: salonB.tinNumber, Payout: salonB.payoutBank },
-    { SalonName: salonC.name, SubCity: salonC.subCity, Owner: ownerC.fullName, Status: salonC.status, TIN: salonC.tinNumber, Payout: salonC.payoutBank },
-    { SalonName: salonD.name, SubCity: salonD.subCity, Owner: ownerD.fullName, Status: salonD.status, TIN: salonD.tinNumber, Payout: salonD.payoutBank },
-  ]);
-
-  console.log('\n--- 3. STANDARD SERVICES (PER APPROVED SALON) ---');
+  console.log('📊 DATABASE SEEDING COMPLETE (10 REAL STUDIOS IN POSTGRESQL)');
+  console.log('===========================================================');
   console.table(
-    standardServicesSpec.map((s) => ({
-      ServiceName: s.name,
-      Category: s.categoryName,
-      Duration: `${s.durationMin} mins`,
-      Price: `${s.priceETB.toString()} ETB`,
-    })),
+    allSalons.map((s) => ({
+      ID: s.id,
+      Name: s.name,
+      District: s.subCity,
+      Verified: s.status === SalonStatus.APPROVED ? '✓ Yes (APPROVED)' : 'Pending (UNVERIFIED)',
+      Featured: s.isFeatured ? '★ Yes (FEATURED)' : 'No (Organic)',
+    }))
   );
-
-  console.log('\n--- 4. STAFF ROSTERS & SPECIALTIES ---');
-  console.table(
-    seededStaffSummary.map((st) => {
-      let salonName = '';
-      if (st.SalonId === salonA.id) salonName = salonA.name;
-      else if (st.SalonId === salonB.id) salonName = salonB.name;
-      else if (st.SalonId === salonC.id) salonName = salonC.name;
-      return {
-        StaffName: st.Name,
-        Title: st.Title,
-        Salon: salonName,
-        Specialties: st.Specialties,
-      };
-    }),
-  );
-
-  console.log('\n🎉 AuraSalon Database Seeded Successfully!');
 }
 
 main()

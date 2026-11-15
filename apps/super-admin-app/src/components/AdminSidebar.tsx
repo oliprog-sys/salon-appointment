@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ShieldCheckIcon } from './icons/Icons';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -52,8 +53,8 @@ export default function AdminSidebar() {
       <div>
         {/* Command Portal Header */}
         <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
-            🛡️
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-extrabold shadow-md">
+            <ShieldCheckIcon className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="font-bold text-white text-base leading-snug tracking-tight">AuraSalon HQ</h1>

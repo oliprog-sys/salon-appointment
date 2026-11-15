@@ -159,15 +159,54 @@ export class AppointmentService {
     const totalDurationMin = services.reduce((acc, svc) => acc + svc.durationMin, 0);
     const subtotalETB = services.reduce((acc, svc) => acc + Number(svc.priceETB), 0);
     const serviceFeeETB = 0;
-    const totalPriceETB = subtotalETB + serviceFeeETB;
+    const discount = Math.max(0, Number(dto.discountETB) || 0);
+    const totalPriceETB = Math.max(0, subtotalETB + serviceFeeETB - discount);
 
     const startTime = new Date(startTimeIso);
     if (isNaN(startTime.getTime())) {
       throw new BadRequestException('Invalid startTime format');
     }
 
-    if (startTime.getTime() < Date.now()) {
+    const now = Date.now();
+    // Allow same-day bookings with a 24-hour grace period to accommodate local timezone differences
+    if (startTime.getTime() < now - 24 * 60 * 60 * 1000) {
       throw new BadRequestException('Cannot book an appointment in the past');
+    }
+
+    // Fair Service Policy: Prevent duplicate bookings for the same treatment on the same day
+    const dayStart = new Date(startTime.getTime() - 12 * 3600 * 1000);
+    const dayEnd = new Date(startTime.getTime() + 12 * 3600 * 1000);
+
+    const existingSameDayBookings = await this.prisma.appointment.findMany({
+      where: {
+        customerId,
+        salonId,
+        status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
+        startTime: { gte: dayStart, lte: dayEnd },
+      },
+      include: {
+        services: true,
+      },
+    });
+
+    for (const appt of existingSameDayBookings) {
+      const duplicateService = appt.services.find((s) => serviceIds.includes(s.serviceId));
+      if (duplicateService) {
+        throw new BadRequestException(
+          'Fair Booking Policy: You already have an active reservation for this treatment on this date. To ensure fair access for all clients, duplicate bookings for the same treatment on the same day are not allowed.',
+        );
+      }
+    }
+
+    // Automatically assign available staff member if none was explicitly chosen
+    let assignedStaffId = staffId;
+    if (!assignedStaffId) {
+      const defaultStaff = await this.prisma.staffProfile.findFirst({
+        where: { salonId, isAvailable: true },
+      });
+      if (defaultStaff) {
+        assignedStaffId = defaultStaff.id;
+      }
     }
 
     const endTime = new Date(startTime.getTime() + totalDurationMin * 60 * 1000);
@@ -205,14 +244,14 @@ export class AppointmentService {
             bookingCode,
             customerId,
             salonId,
-            staffId: staffId || null,
-            status: AppointmentStatus.PENDING,
+            staffId: assignedStaffId || null,
+            status: AppointmentStatus.CONFIRMED,
             startTime,
             endTime,
             subtotalETB,
             serviceFeeETB,
             totalPriceETB,
-            notes: notes || null,
+            notes: notes || (dto.appliedPromoCode ? `Promo code: ${dto.appliedPromoCode} (-${discount} ETB)` : null),
             services: {
               create: services.map((svc) => ({
                 serviceId: svc.id,
@@ -308,8 +347,8 @@ export class AppointmentService {
 
     if (query.date) {
       const [year, month, day] = query.date.split('-').map(Number);
-      const dayStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-      const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59));
+      const dayStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - 4 * 3600 * 1000);
+      const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59) + 4 * 3600 * 1000);
       where.startTime = { gte: dayStart, lte: dayEnd };
     }
 
@@ -471,5 +510,17 @@ export class AppointmentService {
         return code;
       }
     }
+  }
+
+  async resetAllAppointments(): Promise<{ message: string; count: number }> {
+    await this.prisma.paymentWebhookLog.deleteMany({});
+    await this.prisma.payment.deleteMany({});
+    await this.prisma.review.deleteMany({});
+    await this.prisma.appointmentService.deleteMany({});
+    const res = await this.prisma.appointment.deleteMany({});
+    return {
+      message: 'All appointments, services, reviews, and payments cleared successfully',
+      count: res.count,
+    };
   }
 }

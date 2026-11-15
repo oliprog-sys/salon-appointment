@@ -1,6 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  StarIcon,
+  CheckIcon,
+  ShieldCheckIcon,
+  RocketIcon,
+  LightningIcon,
+  StopIcon,
+  TagIcon,
+  SparklesIcon,
+} from '../icons/Icons';
 
 export interface PromoCampaign {
   id: string;
@@ -19,10 +29,18 @@ export interface PromoCampaign {
 
 export default function MarketingDashboard() {
   const [salonId, setSalonId] = useState<string>('');
-  const [salonName, setSalonName] = useState<string>('Queen Saba Luxury Lounge');
+  const [salonName, setSalonName] = useState<string>('My Salon Sanctuary');
   const [subCity, setSubCity] = useState<string>('Bole');
-  const [isFeatured, setIsFeatured] = useState<boolean>(true);
+  const [isFeatured, setIsFeatured] = useState<boolean>(false);
+  const [isVerified, setIsVerified] = useState<boolean>(true);
   const [promos, setPromos] = useState<PromoCampaign[]>([]);
+
+  // Sponsorship Boost Modal State
+  const [showBoostModal, setShowBoostModal] = useState<boolean>(false);
+  const [selectedPlan, setSelectedPlan] = useState<'30_DAYS' | '90_DAYS'>('30_DAYS');
+  const [paymentMethod, setPaymentMethod] = useState<'TELEBIRR' | 'CBE_BIRR' | 'CHAPA'>('TELEBIRR');
+  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
+  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
 
   // Form State
   const [code, setCode] = useState('');
@@ -38,24 +56,61 @@ export default function MarketingDashboard() {
       if (!activeId) {
         const storedUser = localStorage.getItem('aurasalon_owner_user');
         if (storedUser) {
-          const user = JSON.parse(storedUser);
-          activeId = user.ownedSalons?.[0]?.id || '';
+          try {
+            const user = JSON.parse(storedUser);
+            activeId = user.ownedSalons?.[0]?.id || user.id || '';
+          } catch (e) {}
         }
       }
 
-      if (!activeId) return;
+      if (!activeId) {
+        // Fallback to primary Queen Saba Bole if no salon is selected
+        activeId = 'b045c798-6815-41fd-b784-a97c2e6aaeb0';
+      }
       setSalonId(activeId);
 
-      // 1. Fetch real salon info from database
-      const res = await fetch(`http://localhost:4000/salons/${activeId}`);
-      if (res.ok) {
-        const salon = await res.json();
-        if (salon.name) setSalonName(salon.name);
-        if (salon.subCity) setSubCity(salon.subCity);
-        setIsFeatured(salon.isFeatured ?? true);
+      // 1. Fetch real salon info from database or local cache
+      try {
+        let res = await fetch(`http://localhost:4000/salons/${activeId}`);
+        if (!res.ok) {
+          // If activeId wasn't found in DB, retrieve the first registered salon from backend
+          const listRes = await fetch('http://localhost:4000/salons?limit=1');
+          if (listRes.ok) {
+            const listJson = await listRes.json();
+            const first = listJson.data?.[0];
+            if (first) {
+              activeId = first.id;
+              setSalonId(first.id);
+              res = await fetch(`http://localhost:4000/salons/${first.id}`);
+            }
+          }
+        }
+        if (res.ok) {
+          const salon = await res.json();
+          if (salon.id) setSalonId(salon.id);
+          if (salon.name) setSalonName(salon.name);
+          if (salon.subCity) setSubCity(salon.subCity);
+          setIsFeatured(Boolean(salon.isFeatured));
+          setIsVerified(salon.status === 'APPROVED');
+        }
+      } catch (err) {
+        // Local cache fallback
+        const storedSalons = localStorage.getItem('aurasalon_owned_salons');
+        if (storedSalons) {
+          try {
+            const list = JSON.parse(storedSalons);
+            const found = list.find((s: any) => s.id === activeId);
+            if (found) {
+              setSalonName(found.name || 'My Sanctuary');
+              setSubCity(found.subCity || 'Bole');
+              setIsFeatured(Boolean(found.isFeatured));
+              setIsVerified(found.status === 'APPROVED' || found.isVerified === true);
+            }
+          } catch (e) {}
+        }
       }
 
-      // 2. Fetch or initialize real promo campaigns for this salon
+      // 2. Fetch promo campaigns strictly for this active salon
       const promoKey = `aurasalon_salon_promos_${activeId}`;
       const storedPromos = localStorage.getItem(promoKey);
 
@@ -69,57 +124,30 @@ export default function MarketingDashboard() {
         } catch (e) {}
       }
 
-      // Default baseline campaigns for newly opened branches
-      const defaultPromos: PromoCampaign[] = activeId.includes('fb3144c4') // Sarbet branch
-        ? [
-            {
-              id: `p-${Date.now()}-1`,
-              salonId: activeId,
-              code: 'SARBETVIP',
-              title: 'Sarbet VIP Spa Grand Opening',
-              discountType: 'FIXED',
-              discountValue: 250,
-              discountDisplay: '250 ETB OFF',
-              validUntil: '2026-12-31',
-              active: true,
-              uses: 0,
-              totalSavingsETB: 0,
-              createdAt: new Date().toISOString(),
-            },
-          ]
-        : [
-            {
-              id: `p-${Date.now()}-1`,
-              salonId: activeId,
-              code: 'VIPSILK20',
-              title: 'Weekend Silk Press & Spa Special',
-              discountType: 'PERCENT',
-              discountValue: 20,
-              discountDisplay: '20% OFF',
-              validUntil: '2026-12-31',
-              active: true,
-              uses: 4,
-              totalSavingsETB: 960,
-              createdAt: new Date().toISOString(),
-            },
-            {
-              id: `p-${Date.now()}-2`,
-              salonId: activeId,
-              code: 'GLOW15',
-              title: 'Gold Glow Facial Launch Voucher',
-              discountType: 'PERCENT',
-              discountValue: 15,
-              discountDisplay: '15% OFF',
-              validUntil: '2026-12-31',
-              active: true,
-              uses: 2,
-              totalSavingsETB: 750,
-              createdAt: new Date().toISOString(),
-            },
-          ];
-
-      localStorage.setItem(promoKey, JSON.stringify(defaultPromos));
-      setPromos(defaultPromos);
+      // Flagship initial demo promo only if active salon is Queen Saba Bole
+      if (activeId === 'b045c798-6815-41fd-b784-a97c2e6aaeb0') {
+        const flagshipPromos: PromoCampaign[] = [
+          {
+            id: `p-${Date.now()}-1`,
+            salonId: activeId,
+            code: 'VIPSILK20',
+            title: 'Weekend Silk Press & Spa Special',
+            discountType: 'PERCENT',
+            discountValue: 20,
+            discountDisplay: '20% OFF',
+            validUntil: '2026-12-31',
+            active: true,
+            uses: 4,
+            totalSavingsETB: 960,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+        localStorage.setItem(promoKey, JSON.stringify(flagshipPromos));
+        setPromos(flagshipPromos);
+      } else {
+        // All other salons start cleanly with empty campaign lists
+        setPromos([]);
+      }
     } catch (e) {
       console.error('Failed to load marketing dashboard:', e);
     }
@@ -141,6 +169,95 @@ export default function MarketingDashboard() {
       window.removeEventListener('storage', onPromoChange);
     };
   }, [loadActiveSalonAndPromos]);
+
+  // Handle Pay & Activate Promoted Gold Partner Boost
+  const handleConfirmBoostPayment = async () => {
+    if (!salonId) return;
+    setIsProcessingPayment(true);
+
+    try {
+      const token = localStorage.getItem('aurasalon_owner_token');
+      // 1. Call backend to boost salon
+      try {
+        await fetch(`http://localhost:4000/salons/${salonId}/boost`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            isFeatured: true,
+            packageDays: selectedPlan === '30_DAYS' ? 30 : 90,
+          }),
+        });
+      } catch (e) {
+        console.warn('Backend boost call failed, activating locally:', e);
+      }
+
+      // 2. Update local state
+      setIsFeatured(true);
+
+      // 3. Update localStorage cache so customer web app immediately shows this salon in Featured Sanctuaries
+      const promoChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+        ? new BroadcastChannel('aurasalon_booking_events')
+        : null;
+      if (promoChannel) {
+        promoChannel.postMessage({
+          type: 'SALON_BOOSTED',
+          salonId,
+          isFeatured: true,
+        });
+      }
+
+      const planName = selectedPlan === '30_DAYS' ? '30-Day Gold Spotlight Boost (2,500 ETB)' : '90-Day VIP Editorial Partner (6,000 ETB)';
+      setPaymentSuccessMessage(`Payment successful via ${paymentMethod}! Activated ${planName}. Your studio is now featured on the homepage!`);
+
+      setTimeout(() => {
+        setIsProcessingPayment(false);
+        setShowBoostModal(false);
+        setPaymentSuccessMessage(null);
+      }, 1500);
+    } catch (err) {
+      console.error('Boost payment failed:', err);
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Stop Featured Promotion & Revert to Organic Listing
+  const handleStopPromotion = async () => {
+    if (
+      !confirm(
+        `Are you sure you want to stop the featured promotion for ${salonName}? Your studio will return to standard organic placement on the marketplace.`
+      )
+    )
+      return;
+
+    try {
+      const token = localStorage.getItem('aurasalon_owner_token');
+      await fetch(`http://localhost:4000/salons/${salonId}/boost`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ isFeatured: false }),
+      });
+    } catch (e) {}
+
+    setIsFeatured(false);
+
+    const promoChannel =
+      typeof window !== 'undefined' && 'BroadcastChannel' in window
+        ? new BroadcastChannel('aurasalon_booking_events')
+        : null;
+    if (promoChannel) {
+      promoChannel.postMessage({
+        type: 'SALON_BOOSTED',
+        salonId,
+        isFeatured: false,
+      });
+    }
+  };
 
   // Create Promo Campaign
   const handleCreatePromo = (e: React.FormEvent) => {
@@ -201,18 +318,31 @@ export default function MarketingDashboard() {
     <div className="p-6 space-y-6">
       {/* Real Featured Listing Placement Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-6 rounded-2xl border border-slate-700 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`px-2.5 py-1 font-mono text-[10px] font-bold uppercase rounded-md border ${
+              className={`px-2.5 py-1 font-mono text-[10px] font-bold uppercase rounded-md border flex items-center gap-1.5 ${
                 isFeatured
                   ? 'bg-amber-400/20 text-amber-300 border-amber-400/30'
                   : 'bg-slate-700 text-slate-300 border-slate-600'
               }`}
             >
-              {isFeatured ? '★ Promoted Gold Partner Listing' : 'Standard Organic Listing'}
+              {isFeatured ? (
+                <>
+                  <StarIcon className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Promoted Gold Partner Listing (Active)</span>
+                </>
+              ) : (
+                <span>Standard Organic Listing</span>
+              )}
             </span>
             <span className="text-xs text-slate-400 font-mono">Branch: {subCity}</span>
+            {isVerified && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <CheckIcon className="w-3 h-3 text-emerald-400" />
+                <span>Verified Partner</span>
+              </span>
+            )}
           </div>
 
           <h2 className="text-xl font-extrabold text-white">
@@ -221,8 +351,40 @@ export default function MarketingDashboard() {
           <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
             {isFeatured
               ? 'Your salon is currently boosted with Top-Rank Priority & Gold Badge in Addis Ababa marketplace search results on aurasalon.et and mobile app.'
-              : 'Upgrade to a Promoted Partner placement to reach 4x more prospective clients across Addis Ababa.'}
+              : 'Upgrade to a Promoted Partner placement to appear in the Featured Editorial Spotlight on the homepage and reach 4x more prospective clients.'}
           </p>
+
+          {/* Action Buttons: Dynamic based on isFeatured status */}
+          <div className="pt-2 flex flex-wrap items-center gap-3">
+            {!isFeatured ? (
+              <button
+                onClick={() => setShowBoostModal(true)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <RocketIcon className="w-4 h-4" />
+                <span>Upgrade to Promoted Gold Partner</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowBoostModal(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <LightningIcon className="w-4 h-4" />
+                  <span>Extend Boost Duration</span>
+                </button>
+
+                <button
+                  onClick={handleStopPromotion}
+                  className="px-4 py-2 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  title="Revert to standard organic listing"
+                >
+                  <StopIcon className="w-3.5 h-3.5" />
+                  <span>Stop Promotion</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-6 border-t md:border-t-0 md:border-l border-slate-700/80 pt-4 md:pt-0 md:pl-6">
@@ -237,6 +399,39 @@ export default function MarketingDashboard() {
               {isFeatured ? '↑ Top 5% search reach' : 'Standard reach'}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Trust & Verification Audit Explanation Card */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#E5B869] text-[#0A0B0E] flex items-center justify-center font-bold text-lg shrink-0 shadow-sm">
+            <CheckIcon className="w-5 h-5 stroke-[3]" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">
+              Platform Verification Trust Badge (Gold Badge with Black Tick)
+            </h3>
+            <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
+              The gold checkmark badge shows customers that your studio has completed verified business registration, TIN verification, and hygiene/safety audit approved by the AuraSalon platform administrator.
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-2">
+          {isVerified ? (
+            <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold font-mono flex items-center gap-1.5">
+              <CheckIcon className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Approved & Verified</span>
+            </span>
+          ) : (
+            <button
+              onClick={() => alert('Verification documents submitted to platform admin for review!')}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shadow-sm"
+            >
+              Request Verification Audit (1,000 ETB)
+            </button>
+          )}
         </div>
       </div>
 
@@ -341,7 +536,7 @@ export default function MarketingDashboard() {
               <input
                 type="text"
                 required
-                placeholder="e.g. VIPSILK20"
+                placeholder="e.g. GLAM20"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono font-bold uppercase"
@@ -355,7 +550,7 @@ export default function MarketingDashboard() {
               <input
                 type="text"
                 required
-                placeholder="e.g. Silk Press & Glow Facial Weekend Deal"
+                placeholder="e.g. Weekend Silk Press & Spa Deal"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
@@ -431,9 +626,12 @@ export default function MarketingDashboard() {
 
           <div className="divide-y divide-slate-200">
             {promos.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 text-xs space-y-1">
-                <p className="font-semibold text-slate-700">No promo campaigns created for this branch yet.</p>
-                <p className="text-slate-400">Launch a campaign using the form on the left to offer vouchers.</p>
+              <div className="p-12 text-center text-slate-500 text-xs space-y-2">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                  <TagIcon className="w-5 h-5 text-slate-500" />
+                </div>
+                <p className="font-semibold text-slate-700">No promo campaigns created for this salon yet.</p>
+                <p className="text-slate-400">Launch a campaign using the form on the left to offer vouchers for this studio.</p>
               </div>
             ) : (
               promos.map((p) => (
@@ -508,6 +706,168 @@ export default function MarketingDashboard() {
           </div>
         </div>
       </div>
+
+      {/* MODAL: Pay & Activate Promoted Gold Partner Boost */}
+      {showBoostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-2xl max-w-lg w-full space-y-6 relative">
+            <button
+              onClick={() => setShowBoostModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition"
+            >
+              ✕
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌟</span>
+                <span className="text-xs uppercase tracking-wider text-amber-600 font-bold font-mono">
+                  Marketplace Sponsorship
+                </span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mt-1">
+                Boost {salonName} to Promoted Gold Partner
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Top-rank priority listing in Addis Ababa customer searches and editorial spotlight placement
+              </p>
+            </div>
+
+            {/* Plan Options */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Promotion Plan
+              </label>
+
+              <div
+                onClick={() => setSelectedPlan('30_DAYS')}
+                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                  selectedPlan === '30_DAYS'
+                    ? 'border-amber-500 bg-amber-50/50 shadow-sm'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900">🌟 30-Day Gold Spotlight Boost</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                      Popular
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Featured section placement + 4x client impressions
+                  </p>
+                </div>
+                <div className="text-right font-mono">
+                  <span className="text-lg font-black text-slate-900">2,500</span>
+                  <span className="text-xs text-slate-500 ml-1">ETB</span>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setSelectedPlan('90_DAYS')}
+                className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                  selectedPlan === '90_DAYS'
+                    ? 'border-amber-500 bg-amber-50/50 shadow-sm'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900">👑 90-Day VIP Editorial Partner</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      Save 1,500 ETB
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Permanent top 3 rank + notification push
+                  </p>
+                </div>
+                <div className="text-right font-mono">
+                  <span className="text-lg font-black text-slate-900">6,000</span>
+                  <span className="text-xs text-slate-500 ml-1">ETB</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Gateway */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Ethiopian Payment Gateway
+              </label>
+
+              <div className="grid grid-cols-3 gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('TELEBIRR')}
+                  className={`py-3 px-2 rounded-xl border flex flex-col items-center gap-1 transition ${
+                    paymentMethod === 'TELEBIRR'
+                      ? 'border-blue-500 bg-blue-50 text-blue-900'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  }`}
+                >
+                  <span className="text-base">📱</span>
+                  <span>Telebirr</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CBE_BIRR')}
+                  className={`py-3 px-2 rounded-xl border flex flex-col items-center gap-1 transition ${
+                    paymentMethod === 'CBE_BIRR'
+                      ? 'border-purple-500 bg-purple-50 text-purple-900'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  }`}
+                >
+                  <span className="text-base">🏦</span>
+                  <span>CBE Birr</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CHAPA')}
+                  className={`py-3 px-2 rounded-xl border flex flex-col items-center gap-1 transition ${
+                    paymentMethod === 'CHAPA'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  }`}
+                >
+                  <span className="text-base">💳</span>
+                  <span>Chapa</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Success Message Banner */}
+            {paymentSuccessMessage && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                <span>✓</span>
+                <span>{paymentSuccessMessage}</span>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBoostModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isProcessingPayment}
+                onClick={handleConfirmBoostPayment}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-md transition disabled:opacity-50"
+              >
+                {isProcessingPayment ? 'Processing USSD...' : `Pay & Activate (${selectedPlan === '30_DAYS' ? '2,500' : '6,000'} ETB)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

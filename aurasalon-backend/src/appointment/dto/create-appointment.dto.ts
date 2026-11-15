@@ -1,4 +1,4 @@
-import { ArrayMinSize, IsArray, IsISO8601, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ArrayMinSize, IsArray, IsISO8601, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateAppointmentDto {
   @IsNotEmpty()
@@ -18,6 +18,15 @@ export class CreateAppointmentDto {
   @IsNotEmpty()
   @IsISO8601({}, { message: 'startTime must be a valid ISO 8601 date string' })
   startTime: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountETB?: number;
+
+  @IsOptional()
+  @IsString()
+  appliedPromoCode?: string;
 
   @IsOptional()
   @IsString()

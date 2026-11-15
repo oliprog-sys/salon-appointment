@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import InstantBookingWidget from "@/components/InstantBookingWidget";
 import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
@@ -15,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="light" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -28,6 +29,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Navbar />
           <main className="flex-grow pt-24 pb-16">{children}</main>
+          <InstantBookingWidget />
           <Footer />
         </ThemeProvider>
       </body>
