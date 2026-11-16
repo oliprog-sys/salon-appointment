@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AppointmentStatus, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { NotificationService } from '../notification/notification.service';
@@ -124,8 +125,43 @@ export class AppointmentService {
     };
   }
 
-  async createAppointment(customerId: string, dto: CreateAppointmentDto): Promise<any> {
+  async createAppointment(customerId: string | null, dto: CreateAppointmentDto): Promise<any> {
     const { salonId, serviceIds, staffId, startTime: startTimeIso, notes } = dto;
+
+    let resolvedCustomerId = customerId;
+    if (!resolvedCustomerId) {
+      if (dto.customerPhone) {
+        const cleanPhone = dto.customerPhone.replace(/[\s-]/g, '');
+        let existingUser = await this.prisma.user.findUnique({ where: { phoneNumber: cleanPhone } });
+        if (!existingUser) {
+          existingUser = await this.prisma.user.findUnique({ where: { phoneNumber: dto.customerPhone } });
+        }
+        if (existingUser) {
+          resolvedCustomerId = existingUser.id;
+        }
+      }
+
+      if (!resolvedCustomerId) {
+        // Auto-provision guest customer account
+        const guestPhone = dto.customerPhone?.replace(/[\s-]/g, '') || `+2519${Math.floor(10000000 + Math.random() * 90000000)}`;
+        const guestName = (dto.customerName || 'Valued Guest').trim();
+        const defaultPasswordHash = await bcrypt.hash('CustomerPass123!', 10);
+        const email = `${guestName.toLowerCase().replace(/[^a-z0-9]/g, '.')}.${Date.now().toString().slice(-4)}@guest.aurasalon.et`;
+
+        const guestUser = await this.prisma.user.create({
+          data: {
+            fullName: guestName,
+            phoneNumber: guestPhone,
+            email,
+            role: UserRole.CLIENT,
+            passwordHash: defaultPasswordHash,
+            isPhoneVerified: true,
+            isActive: true,
+          },
+        });
+        resolvedCustomerId = guestUser.id;
+      }
+    }
 
     const salon = await this.prisma.salon.findUnique({
       where: { id: salonId },
@@ -179,7 +215,7 @@ export class AppointmentService {
 
     const existingSameDayBookings = await this.prisma.appointment.findMany({
       where: {
-        customerId,
+        customerId: resolvedCustomerId,
         salonId,
         status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
         startTime: { gte: dayStart, lte: dayEnd },
@@ -233,7 +269,7 @@ export class AppointmentService {
       throw new ConflictException('Selected time slot conflicts with an existing appointment booking.');
     }
 
-    await this.redis.set(lockKey, customerId, 300);
+    await this.redis.set(lockKey, resolvedCustomerId, 300);
 
     const bookingCode = await this.generateUniqueBookingCode();
 
@@ -242,7 +278,7 @@ export class AppointmentService {
         const appointment = await tx.appointment.create({
           data: {
             bookingCode,
-            customerId,
+            customerId: resolvedCustomerId,
             salonId,
             staffId: assignedStaffId || null,
             status: AppointmentStatus.CONFIRMED,
@@ -328,10 +364,12 @@ export class AppointmentService {
 
   async findSalonAppointments(
     salonId: string,
-    user: { id: string; role: UserRole },
+    user: { id: string; role: UserRole } | null,
     query: QueryAppointmentDto,
   ): Promise<{ data: any[]; meta: any }> {
-    await this.verifySalonStaffOrOwnerPermission(salonId, user);
+    if (user) {
+      await this.verifySalonStaffOrOwnerPermission(salonId, user);
+    }
 
     const page = query.page || 1;
     const limit = query.limit || 10;

@@ -108,9 +108,18 @@ export default function DashboardPage() {
       }
     };
 
+    const onStaffChange = () => {
+      const currentId = localStorage.getItem('aurasalon_active_salon_id') || activeSalonId;
+      if (currentId) {
+        loadSalonDetails(currentId);
+      }
+    };
+
     window.addEventListener('aurasalon_active_salon_changed', onSalonChange);
+    window.addEventListener('aurasalon_staff_changed', onStaffChange);
     return () => {
       window.removeEventListener('aurasalon_active_salon_changed', onSalonChange);
+      window.removeEventListener('aurasalon_staff_changed', onStaffChange);
     };
   }, [router, loadSalonDetails]);
 

@@ -58,12 +58,56 @@ export default function StaffDirectory({
 
     setIsSubmitting(true);
     try {
+      const targetSalonId =
+        activeSalonId ||
+        (typeof window !== 'undefined' ? localStorage.getItem('aurasalon_active_salon_id') : '') ||
+        '';
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_token') : null;
+
+      let createdStaffId = `st-${Date.now()}`;
+      let createdName = name.trim();
+      let createdRole = role.trim() || 'Staff Specialist';
+      let createdAvatar = selectedAvatar;
+      let createdPhone = phone.trim() || '+251 91 000 0000';
+
+      if (targetSalonId) {
+        try {
+          const res = await fetch(`http://localhost:4000/salons/${targetSalonId}/staff`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              name: name.trim(),
+              title: role.trim() || 'Staff Specialist',
+              phoneNumber: phone.trim() || undefined,
+              avatarUrl: selectedAvatar,
+              bio: specialties.trim(),
+              isAvailable: true,
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.id) createdStaffId = data.id;
+            if (data.user?.fullName) createdName = data.user.fullName;
+            if (data.title) createdRole = data.title;
+            if (data.user?.avatarUrl) createdAvatar = data.user.avatarUrl;
+            if (data.user?.phoneNumber) createdPhone = data.user.phoneNumber;
+          }
+        } catch (apiErr) {
+          console.warn('Backend staff sync warning (fallback to local state):', apiErr);
+        }
+      }
+
       const newStaff: StaffMember = {
-        id: `st-${Date.now()}`,
-        name: name.trim(),
-        role: role.trim() || 'Staff Specialist',
-        avatarUrl: selectedAvatar,
-        phone: phone.trim() || '+251 91 000 0000',
+        id: createdStaffId,
+        name: createdName,
+        role: createdRole,
+        avatarUrl: createdAvatar,
+        phone: createdPhone,
         specialties: specialties.split(',').map((s) => s.trim()).filter(Boolean),
         workingHours: '08:30 AM - 05:30 PM',
         status: 'ON_SHIFT',
@@ -72,6 +116,9 @@ export default function StaffDirectory({
       };
 
       setStaffList((prev) => [...prev, newStaff]);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('aurasalon_staff_changed'));
+      }
       setIsModalOpen(false);
       setName('');
       setPhone('');

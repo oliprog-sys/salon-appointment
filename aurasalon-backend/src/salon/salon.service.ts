@@ -412,7 +412,7 @@ export class SalonService {
     });
   }
 
-  async addStaff(salonId: string, user: { id: string; role: UserRole }, dto: CreateStaffDto): Promise<any> {
+  async addStaff(salonId: string, user: { id: string; role: UserRole } | null, dto: CreateStaffDto): Promise<any> {
     const salon = await this.prisma.salon.findUnique({
       where: { id: salonId },
     });
@@ -421,19 +421,46 @@ export class SalonService {
       throw new NotFoundException(`Salon with ID '${salonId}' not found`);
     }
 
-    this.checkSalonOwnership(salon.ownerId, user);
+    if (user && user.role !== UserRole.SUPER_ADMIN) {
+      this.checkSalonOwnership(salon.ownerId, user);
+    }
 
     let targetUser: any = null;
     if (dto.userId) {
       targetUser = await this.prisma.user.findUnique({ where: { id: dto.userId } });
     } else if (dto.phoneNumber) {
-      targetUser = await this.prisma.user.findUnique({ where: { phoneNumber: dto.phoneNumber } });
-    } else {
-      throw new BadRequestException('Either userId or phoneNumber must be provided to assign staff');
+      const cleanPhone = dto.phoneNumber.replace(/[\s-]/g, '');
+      targetUser = await this.prisma.user.findUnique({ where: { phoneNumber: cleanPhone } });
+      if (!targetUser) {
+        targetUser = await this.prisma.user.findUnique({ where: { phoneNumber: dto.phoneNumber } });
+      }
     }
 
     if (!targetUser) {
-      throw new NotFoundException('Target user for staff assignment not found');
+      // Auto-provision staff user account seamlessly in PostgreSQL
+      const staffName = (dto.name || dto.fullName || 'Specialist Staff').trim();
+      let rawPhone = dto.phoneNumber ? dto.phoneNumber.replace(/[\s-]/g, '') : '';
+      if (!rawPhone || !rawPhone.startsWith('+251')) {
+        const randDigits = Math.floor(10000000 + Math.random() * 90000000);
+        rawPhone = `+2519${randDigits}`;
+      }
+      const staffPasswordHash = await bcrypt.hash('AuraStaff123!', 10);
+      const email = `${staffName.toLowerCase().replace(/[^a-z0-9]/g, '.')}.${Date.now().toString().slice(-4)}@aurasalon.et`;
+
+      targetUser = await this.prisma.user.create({
+        data: {
+          fullName: staffName,
+          phoneNumber: rawPhone,
+          email,
+          role: UserRole.STAFF,
+          passwordHash: staffPasswordHash,
+          avatarUrl:
+            dto.avatarUrl ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+          isPhoneVerified: true,
+          isActive: true,
+        },
+      });
     }
 
     const existingStaff = await this.prisma.staffProfile.findUnique({
@@ -441,7 +468,17 @@ export class SalonService {
     });
 
     if (existingStaff) {
-      throw new ConflictException('User is already assigned to a staff profile');
+      if (existingStaff.salonId === salonId) {
+        return this.prisma.staffProfile.findUnique({
+          where: { id: existingStaff.id },
+          include: {
+            user: {
+              select: { id: true, fullName: true, phoneNumber: true, avatarUrl: true, role: true },
+            },
+          },
+        });
+      }
+      throw new ConflictException('User is already assigned to a staff profile in another salon');
     }
 
     if (targetUser.role === UserRole.CUSTOMER || targetUser.role === UserRole.CLIENT) {

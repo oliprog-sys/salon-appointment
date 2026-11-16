@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Appointment, StaffMember, ServiceOffering, AppointmentStatus } from '../../types';
 
 interface CalendarViewProps {
@@ -115,6 +115,7 @@ export default function CalendarView({
 
   // State
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
+  const knownApptIdsRef = useRef<Set<string> | null>(null);
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
   const [selectedDate, setSelectedDate] = useState<string>(todayDate);
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>('ALL');
@@ -261,6 +262,24 @@ export default function CalendarView({
 
         const existingIds = new Set(dbAppointments.map((a) => a.id));
         const merged = [...dbAppointments, ...localAppointments.filter((a) => !existingIds.has(a.id))];
+
+        // Trigger real-time audio chime and visual banner when a new live appointment arrives via database sync
+        if (knownApptIdsRef.current !== null) {
+          const newApts = merged.filter((a) => !knownApptIdsRef.current!.has(a.id) && a.status !== 'CANCELLED');
+          if (newApts.length > 0) {
+            const latest = newApts[0];
+            playBookingChime();
+            setNewBookingAlert({
+              customerName: latest.customerName || 'A client',
+              serviceName: latest.serviceName || 'Salon Service',
+              timeSlot: latest.timeSlot || 'Scheduled Time',
+              priceETB: latest.priceETB || 0,
+              date: latest.date || date,
+            });
+          }
+        }
+        knownApptIdsRef.current = new Set(merged.map((a) => a.id));
+
         setAppointments(merged);
       } catch (err) {
         console.error('Failed to fetch salon appointments:', err);
@@ -280,6 +299,7 @@ export default function CalendarView({
 
     window.addEventListener('aurasalon_appointments_changed', onAppChange);
     window.addEventListener('aurasalon_active_salon_changed', onSalonChange);
+    window.addEventListener('aurasalon_staff_changed', onSalonChange);
     window.addEventListener('storage', onAppChange);
 
     // Instant cross-tab BroadcastChannel listener for incoming bookings
@@ -310,14 +330,15 @@ export default function CalendarView({
       };
     } catch (e) {}
 
-    // 12-second periodic polling interval to sync database in real-time
+    // Responsive 4-second periodic polling interval to sync database in real-time
     const interval = setInterval(() => {
       fetchAppointments(selectedDate);
-    }, 12000);
+    }, 4000);
 
     return () => {
       window.removeEventListener('aurasalon_appointments_changed', onAppChange);
       window.removeEventListener('aurasalon_active_salon_changed', onSalonChange);
+      window.removeEventListener('aurasalon_staff_changed', onSalonChange);
       window.removeEventListener('storage', onAppChange);
       if (channel) channel.close();
       clearInterval(interval);

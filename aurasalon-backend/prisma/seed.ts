@@ -578,6 +578,15 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111114',
       title: 'Lead Spa & Moroccan Bath Therapist',
       bio: 'Certified hammam and holistic wellness therapist.',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+    },
+    {
+      salonId: salon3.id,
+      fullName: 'Bethlehem Girma',
+      phoneNumber: '+251921111123',
+      title: 'Master Bridal Makeup Artist',
+      bio: 'Editorial and bridal glamour with 7+ years expertise.',
+      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
     },
     {
       salonId: salon3.id,
@@ -585,6 +594,7 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111115',
       title: 'Executive Barber',
       bio: 'High-end styling and hot towel beard conditioning.',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     },
     {
       salonId: salon4.id,
@@ -592,6 +602,7 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111116',
       title: 'Executive Barber & Director',
       bio: 'Master barbering with 10+ years experience.',
+      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     },
     {
       salonId: salon5.id,
@@ -599,6 +610,7 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111117',
       title: 'Pedicure & Reflexology Specialist',
       bio: 'Volcanic stone spa pedicures and reflexology.',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     },
     {
       salonId: salon6.id,
@@ -606,6 +618,7 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111118',
       title: 'Senior Nail Artist',
       bio: 'Russian manicures and luxury nail art.',
+      avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
     },
     {
       salonId: salon7.id,
@@ -613,6 +626,7 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111119',
       title: 'Braider & Hair Stylist',
       bio: 'Knotless box braids and organic oil treatments.',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     },
     {
       salonId: salon8.id,
@@ -620,6 +634,23 @@ async function main(): Promise<void> {
       phoneNumber: '+251921111120',
       title: 'Master Botanical Director',
       bio: 'Cold-pressed castor and koba oil steam therapy.',
+      avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+    },
+    {
+      salonId: salon9.id,
+      fullName: 'Fikadu Bekele',
+      phoneNumber: '+251921111121',
+      title: 'Master Traditional Barber',
+      bio: 'Heritage grooming and traditional razor styling.',
+      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    },
+    {
+      salonId: salon10.id,
+      fullName: 'Genet Alemu',
+      phoneNumber: '+251921111122',
+      title: 'Senior Hair & Brow Stylist',
+      bio: 'Modern hair architecture and brow threading.',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     },
   ];
 
@@ -631,6 +662,9 @@ async function main(): Promise<void> {
         email: `${st.fullName.toLowerCase().replace(/\s+/g, '.')}@aurasalon.et`,
         role: UserRole.STAFF,
         passwordHash: staffPasswordHash,
+        avatarUrl:
+          (st as any).avatarUrl ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
         isPhoneVerified: true,
         isActive: true,
       },
@@ -677,6 +711,19 @@ async function main(): Promise<void> {
       isPhoneVerified: true,
       isActive: true,
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    },
+  });
+
+  const customer3 = await prisma.user.create({
+    data: {
+      fullName: 'Almaz Tadesse',
+      phoneNumber: '+251911234567',
+      email: 'almaz.tadesse@gmail.com',
+      role: UserRole.CLIENT,
+      passwordHash: customerPasswordHash,
+      isPhoneVerified: true,
+      isActive: true,
+      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
     },
   });
   console.log('   ✅ Test customer accounts created (0 previous appointments).\n');

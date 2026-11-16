@@ -272,38 +272,39 @@ function BookingForm() {
       setBookingError(null);
 
       // Async post to backend API for PostgreSQL database persistence
-      if (token) {
-        try {
-          const apiRes = await fetch('http://localhost:4000/appointments', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              salonId: targetSalon.id,
-              serviceIds: selectedServices.map((s) => s.id),
-              staffId: selectedStaffId || undefined,
-              startTime,
-              discountETB: discountAmountETB,
-              appliedPromoCode: appliedPromo?.code,
-              notes: `Paid via ${selectedPaymentMethod}${appliedPromo ? ` (Promo: ${appliedPromo.code} -${discountAmountETB} ETB)` : ''}`,
-            }),
-          });
-          const apiData = await apiRes.json();
-          if (!apiRes.ok) {
-            const errorMsg = Array.isArray(apiData.message)
-              ? apiData.message.join(', ')
-              : apiData.message || 'Failed to confirm booking on backend server.';
-            setBookingError(errorMsg);
-            return;
-          }
+      try {
+        const apiRes = await fetch('http://localhost:4000/appointments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            salonId: targetSalon.id,
+            serviceIds: selectedServices.map((s) => s.id),
+            staffId: selectedStaffId || undefined,
+            startTime,
+            discountETB: discountAmountETB,
+            appliedPromoCode: appliedPromo?.code,
+            notes: `Paid via ${selectedPaymentMethod}${appliedPromo ? ` (Promo: ${appliedPromo.code} -${discountAmountETB} ETB)` : ''}`,
+            customerName: customerName || 'Valued Client',
+            customerPhone: customerPhone || '+251911234567',
+          }),
+        });
+        const apiData = await apiRes.json();
+        if (apiRes.ok) {
           if (apiData.bookingCode) {
             code = apiData.bookingCode;
           }
-        } catch (e: any) {
-          console.error('Backend appointment sync error:', e);
+        } else {
+          const errorMsg = Array.isArray(apiData.message)
+            ? apiData.message.join(', ')
+            : apiData.message || 'Failed to confirm booking on backend server.';
+          setBookingError(errorMsg);
+          return;
         }
+      } catch (e: any) {
+        console.error('Backend appointment sync error:', e);
       }
 
       // Emit real-time notification to the salon owner via BroadcastChannel

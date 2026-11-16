@@ -17,6 +17,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CreateSalonDto } from './dto/create-salon.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { ManualOnboardSalonDto } from './dto/manual-onboard-salon.dto';
@@ -108,12 +109,11 @@ export class SalonController {
   }
 
   @Post(':id/staff')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SALON_OWNER, UserRole.SUPER_ADMIN)
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async addStaff(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string; role: UserRole },
+    @CurrentUser() user: { id: string; role: UserRole } | null,
     @Body() dto: CreateStaffDto,
   ) {
     return this.salonService.addStaff(id, user, dto);

@@ -59,8 +59,10 @@ export default function StaffPage() {
 
     loadStaff();
     window.addEventListener('aurasalon_active_salon_changed', loadStaff);
+    window.addEventListener('aurasalon_staff_changed', loadStaff);
     return () => {
       window.removeEventListener('aurasalon_active_salon_changed', loadStaff);
+      window.removeEventListener('aurasalon_staff_changed', loadStaff);
     };
   }, []);
 

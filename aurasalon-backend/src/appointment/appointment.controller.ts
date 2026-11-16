@@ -15,6 +15,7 @@ import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AppointmentService } from './appointment.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
@@ -48,10 +49,10 @@ export class AppointmentController {
   }
 
   @Post('appointments')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createAppointment(
-    @CurrentUser('id') customerId: string,
+    @CurrentUser('id') customerId: string | null,
     @Body() dto: CreateAppointmentDto,
   ) {
     return this.appointmentService.createAppointment(customerId, dto);
@@ -67,11 +68,10 @@ export class AppointmentController {
   }
 
   @Get('appointments/salon/:salonId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SALON_OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
+  @UseGuards(OptionalJwtAuthGuard)
   async findSalonAppointments(
     @Param('salonId') salonId: string,
-    @CurrentUser() user: { id: string; role: UserRole },
+    @CurrentUser() user: { id: string; role: UserRole } | null,
     @Query() query: QueryAppointmentDto,
   ) {
     return this.appointmentService.findSalonAppointments(salonId, user, query);

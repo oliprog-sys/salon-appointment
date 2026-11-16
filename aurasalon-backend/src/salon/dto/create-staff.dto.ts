@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateStaffDto {
   @IsOptional()
@@ -7,10 +7,19 @@ export class CreateStaffDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\+251[79]\d{8}$/, {
-    message: 'phoneNumber must be a valid Ethiopian E.164 phone number (e.g. +251912345678)',
-  })
   phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
 
   @IsNotEmpty()
   @IsString()
