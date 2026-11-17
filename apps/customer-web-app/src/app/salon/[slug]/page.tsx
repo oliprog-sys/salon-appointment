@@ -6,17 +6,14 @@ import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
 import ServiceCard from '@/components/ServiceCard';
 import { fetchSalonBySlug } from '@/utils/salonApi';
-import { MOCK_SALONS } from '@/data/mockData';
 import { Salon, Service, StaffProfile } from '@/types';
 
 export default function SalonDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
 
-  const [salon, setSalon] = useState<Salon | null>(() => {
-    return MOCK_SALONS.find((s) => s.slug === resolvedParams.slug) || null;
-  });
-  const [loading, setLoading] = useState(!salon);
+  const [salon, setSalon] = useState<Salon | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<StaffProfile | null>(null);
 

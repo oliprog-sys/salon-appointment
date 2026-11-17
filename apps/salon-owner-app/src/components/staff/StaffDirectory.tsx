@@ -40,6 +40,7 @@ export default function StaffDirectory({
   const [specialties, setSpecialties] = useState('Hair Care, Silk Press');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_PRESETS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [staffError, setStaffError] = useState<string | null>(null);
 
   const toggleStatus = (id: string) => {
     setStaffList((prev) =>
@@ -57,6 +58,7 @@ export default function StaffDirectory({
     if (!name.trim()) return;
 
     setIsSubmitting(true);
+    setStaffError(null);
     try {
       const targetSalonId =
         activeSalonId ||
@@ -72,34 +74,33 @@ export default function StaffDirectory({
       let createdPhone = phone.trim() || '+251 91 000 0000';
 
       if (targetSalonId) {
-        try {
-          const res = await fetch(`http://localhost:4000/salons/${targetSalonId}/staff`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({
-              name: name.trim(),
-              title: role.trim() || 'Staff Specialist',
-              phoneNumber: phone.trim() || undefined,
-              avatarUrl: selectedAvatar,
-              bio: specialties.trim(),
-              isAvailable: true,
-            }),
-          });
+        const res = await fetch(`http://localhost:4000/salons/${targetSalonId}/staff`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            title: role.trim() || 'Staff Specialist',
+            phoneNumber: phone.trim() || undefined,
+            avatarUrl: selectedAvatar,
+            bio: specialties.trim(),
+            isAvailable: true,
+          }),
+        });
 
-          if (res.ok) {
-            const data = await res.json();
-            if (data.id) createdStaffId = data.id;
-            if (data.user?.fullName) createdName = data.user.fullName;
-            if (data.title) createdRole = data.title;
-            if (data.user?.avatarUrl) createdAvatar = data.user.avatarUrl;
-            if (data.user?.phoneNumber) createdPhone = data.user.phoneNumber;
-          }
-        } catch (apiErr) {
-          console.warn('Backend staff sync warning (fallback to local state):', apiErr);
+        const data = await res.json();
+        if (!res.ok) {
+          const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+          throw new Error(msg || 'Failed to save staff member in database');
         }
+
+        if (data.id) createdStaffId = data.id;
+        if (data.user?.fullName) createdName = data.user.fullName;
+        if (data.title) createdRole = data.title;
+        if (data.user?.avatarUrl) createdAvatar = data.user.avatarUrl;
+        if (data.user?.phoneNumber) createdPhone = data.user.phoneNumber;
       }
 
       const newStaff: StaffMember = {
@@ -122,9 +123,11 @@ export default function StaffDirectory({
       setIsModalOpen(false);
       setName('');
       setPhone('');
+      setStaffError(null);
       setRole('Hair Stylist & Specialist');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding staff member:', err);
+      setStaffError(err.message || 'Error adding staff member to database.');
     } finally {
       setIsSubmitting(false);
     }
@@ -263,6 +266,12 @@ export default function StaffDirectory({
             </div>
 
             <form onSubmit={handleAddStaff} className="p-5 space-y-4">
+              {staffError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium animate-in fade-in">
+                  ⚠️ {staffError}
+                </div>
+              )}
+
               {/* Branch Association Badge */}
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
                 <span className="text-slate-600 font-medium">Branch Location:</span>

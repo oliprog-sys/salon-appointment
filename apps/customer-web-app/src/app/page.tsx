@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import SalonCard from '@/components/SalonCard';
 import { fetchAllSalons } from '@/utils/salonApi';
-import { MOCK_SALONS } from '@/data/mockData';
 import { Salon, SubCity } from '@/types';
 import {
   SparklesIcon,
@@ -19,7 +18,7 @@ import {
 } from '@/components/icons/Icons';
 
 export default function Home() {
-  const [salons, setSalons] = useState<Salon[]>(MOCK_SALONS);
+  const [salons, setSalons] = useState<Salon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -505,7 +504,20 @@ export default function Home() {
         </div>
 
         {/* Salons Grid (Paginated at 9 studios per page) */}
-        {paginatedSalons.length > 0 ? (
+        {isLoading && salons.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={`skel-${i}`} className="glass-card rounded-3xl overflow-hidden border border-[var(--border-primary)] animate-pulse">
+                <div className="h-60 bg-[var(--bg-card-subtle)]" />
+                <div className="p-6 space-y-3">
+                  <div className="h-4 bg-[var(--bg-card-subtle)] rounded w-3/4" />
+                  <div className="h-3 bg-[var(--bg-card-subtle)] rounded w-1/2" />
+                  <div className="h-8 bg-[var(--bg-card-subtle)] rounded w-full mt-4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : paginatedSalons.length > 0 ? (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {paginatedSalons.map((salon) => (

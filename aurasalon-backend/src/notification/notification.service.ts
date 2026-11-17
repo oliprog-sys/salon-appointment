@@ -90,13 +90,30 @@ export class NotificationService {
 
   async notifyAppointmentBooked(appointment: any): Promise<void> {
     const title = 'Booking Created';
-    const body = `Your appointment (${appointment.bookingCode}) at ${appointment.salon?.name || 'AuraSalon'} is pending confirmation.`;
+    const body = `Your appointment (${appointment.bookingCode}) at ${appointment.salon?.name || 'AuraSalon'} is confirmed.`;
     const data = { appointmentId: appointment.id, bookingCode: appointment.bookingCode, type: 'BOOKED' };
 
     await this.sendNotificationToUser(appointment.customerId, title, body, data);
 
     if (appointment.customer?.phoneNumber) {
       this.dispatchSms(appointment.customer.phoneNumber, `[AuraSalon] ${body}`);
+    }
+
+    // Also notify salon owner so it appears in the salon owner portal notifications
+    try {
+      if (appointment.salonId) {
+        const salon = await this.prisma.salon.findUnique({
+          where: { id: appointment.salonId },
+          select: { ownerId: true, name: true },
+        });
+        if (salon?.ownerId) {
+          const ownerTitle = 'New Booking Received';
+          const ownerBody = `New appointment (${appointment.bookingCode}) booked at ${salon.name} for ${appointment.staff?.user?.fullName || 'a specialist'}.`;
+          await this.sendNotificationToUser(salon.ownerId, ownerTitle, ownerBody, data);
+        }
+      }
+    } catch (e) {
+      this.logger.warn('Failed to notify salon owner of new booking', e);
     }
   }
 

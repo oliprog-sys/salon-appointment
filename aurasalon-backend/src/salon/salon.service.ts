@@ -231,10 +231,55 @@ export class SalonService {
     };
   }
 
-  async findSalonByIdOrSlug(idOrSlug: string): Promise<any> {
-    const salon = await this.prisma.salon.findFirst({
+  async resolveSalonRecord(idOrSlug: string): Promise<any> {
+    const LEGACY_ID_MAP: Record<string, string> = {
+      'b045c798-6815-41fd-b784-a97c2e6aaeb0': 'queen-saba-luxury-lounge',
+      's1': 'queen-saba-luxury-lounge',
+      'fb3144c4-186e-4d26-a58b-181ccdddf5bb': 'queen-saba-vip-spa-wellness',
+      's2': 'kazanchis-glamour-studio',
+      's3': 'habesha-executive-gentlemen-grooming',
+      's4': 'sarbet-beauty-bar',
+      's5': 'old-airport-spa-nails',
+      's6-unverified-gerji': 'luxe-glow-haven-gerji',
+      's7-featured-cmc': 'eleni-botanical-hair-spa-cmc',
+      's8-unverified-piassa': 'arada-heritage-barber-traditional-lounge',
+      's9-mexico': 'addis-urban-beauty-studio-mexico',
+    };
+
+    const targetKey = LEGACY_ID_MAP[idOrSlug] || idOrSlug;
+
+    return this.prisma.salon.findFirst({
       where: {
-        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+        OR: [{ id: targetKey }, { slug: targetKey }],
+      },
+      include: {
+        owner: {
+          select: { id: true, fullName: true, phoneNumber: true, avatarUrl: true },
+        },
+      },
+    });
+  }
+
+  async findSalonByIdOrSlug(idOrSlug: string): Promise<any> {
+    const LEGACY_ID_MAP: Record<string, string> = {
+      'b045c798-6815-41fd-b784-a97c2e6aaeb0': 'queen-saba-luxury-lounge',
+      's1': 'queen-saba-luxury-lounge',
+      'fb3144c4-186e-4d26-a58b-181ccdddf5bb': 'queen-saba-vip-spa-wellness',
+      's2': 'kazanchis-glamour-studio',
+      's3': 'habesha-executive-gentlemen-grooming',
+      's4': 'sarbet-beauty-bar',
+      's5': 'old-airport-spa-nails',
+      's6-unverified-gerji': 'luxe-glow-haven-gerji',
+      's7-featured-cmc': 'eleni-botanical-hair-spa-cmc',
+      's8-unverified-piassa': 'arada-heritage-barber-traditional-lounge',
+      's9-mexico': 'addis-urban-beauty-studio-mexico',
+    };
+
+    const targetKey = LEGACY_ID_MAP[idOrSlug] || idOrSlug;
+
+    let salon = await this.prisma.salon.findFirst({
+      where: {
+        OR: [{ id: targetKey }, { slug: targetKey }],
         isActive: true,
         status: { in: [SalonStatus.APPROVED, SalonStatus.PENDING_REVIEW] },
       },
@@ -413,9 +458,7 @@ export class SalonService {
   }
 
   async addStaff(salonId: string, user: { id: string; role: UserRole } | null, dto: CreateStaffDto): Promise<any> {
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-    });
+    const salon = await this.resolveSalonRecord(salonId);
 
     if (!salon) {
       throw new NotFoundException(`Salon with ID '${salonId}' not found`);
@@ -468,7 +511,7 @@ export class SalonService {
     });
 
     if (existingStaff) {
-      if (existingStaff.salonId === salonId) {
+      if (existingStaff.salonId === salon.id) {
         return this.prisma.staffProfile.findUnique({
           where: { id: existingStaff.id },
           include: {
@@ -491,7 +534,7 @@ export class SalonService {
     return this.prisma.staffProfile.create({
       data: {
         userId: targetUser.id,
-        salonId,
+        salonId: salon.id,
         title: dto.title,
         bio: dto.bio || null,
         isAvailable: dto.isAvailable ?? true,
@@ -505,16 +548,14 @@ export class SalonService {
   }
 
   async getStaffBySalon(salonId: string): Promise<any[]> {
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-    });
+    const salon = await this.resolveSalonRecord(salonId);
 
     if (!salon) {
       throw new NotFoundException(`Salon with ID '${salonId}' not found`);
     }
 
     return this.prisma.staffProfile.findMany({
-      where: { salonId },
+      where: { salonId: salon.id },
       include: {
         user: {
           select: { id: true, fullName: true, avatarUrl: true, phoneNumber: true },
@@ -529,9 +570,7 @@ export class SalonService {
     user: { id: string; role: UserRole },
     dto: UpdateStaffDto,
   ): Promise<any> {
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-    });
+    const salon = await this.resolveSalonRecord(salonId);
 
     if (!salon) {
       throw new NotFoundException(`Salon with ID '${salonId}' not found`);
@@ -540,7 +579,7 @@ export class SalonService {
     this.checkSalonOwnership(salon.ownerId, user);
 
     const staffProfile = await this.prisma.staffProfile.findFirst({
-      where: { id: staffId, salonId },
+      where: { id: staffId, salonId: salon.id },
     });
 
     if (!staffProfile) {

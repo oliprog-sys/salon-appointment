@@ -24,30 +24,58 @@ export default function StaffPage() {
           }
         }
 
+        let salon = null;
         if (salonId) {
-          setActiveSalonId(salonId);
           const res = await fetch(`http://localhost:4000/salons/${salonId}`);
           if (res.ok) {
-            const salon = await res.json();
-            if (salon.name) setSalonName(salon.name);
+            salon = await res.json();
+          }
+        }
 
-            if (Array.isArray(salon.staff)) {
-              const mapped: StaffMember[] = salon.staff.map((s: any) => ({
-                id: s.id,
-                name: s.user?.fullName || 'Specialist',
-                role: s.title || 'Stylist',
-                avatarUrl:
-                  s.user?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                phone: s.user?.phoneNumber || '',
-                specialties: [],
-                workingHours: '08:30 AM - 05:30 PM',
-                status: s.isAvailable ? 'ON_SHIFT' : 'OFF_DUTY',
-                rating: 5.0,
-                totalBookingsToday: 0,
-              }));
-              setStaffList(mapped);
+        if (!salon) {
+          // If salonId failed to fetch, match the user's intended branch
+          const listRes = await fetch('http://localhost:4000/salons?limit=20');
+          if (listRes.ok) {
+            const listData = await listRes.json();
+            const allSalons: any[] = listData.data || [];
+            const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_user') : null;
+            let matched: any = null;
+            if (storedUserStr) {
+              try {
+                const u = JSON.parse(storedUserStr);
+                const target = u.ownedSalons?.find((s: any) => s.id === salonId) || u.ownedSalons?.[0];
+                if (target) {
+                  matched = allSalons.find((s: any) => s.name === target.name || s.slug === target.slug);
+                }
+              } catch (e) {}
             }
+            salon = matched || allSalons.find((s: any) => s.id === salonId) || null;
+            if (salon?.id) {
+              localStorage.setItem('aurasalon_active_salon_id', salon.id);
+            }
+          }
+        }
+
+        if (salon) {
+          setActiveSalonId(salon.id);
+          if (salon.name) setSalonName(salon.name);
+
+          if (Array.isArray(salon.staff)) {
+            const mapped: StaffMember[] = salon.staff.map((s: any) => ({
+              id: s.id,
+              name: s.user?.fullName || 'Specialist',
+              role: s.title || 'Stylist',
+              avatarUrl:
+                s.user?.avatarUrl ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              phone: s.user?.phoneNumber || '',
+              specialties: [],
+              workingHours: '08:30 AM - 05:30 PM',
+              status: s.isAvailable ? 'ON_SHIFT' : 'OFF_DUTY',
+              rating: 5.0,
+              totalBookingsToday: 0,
+            }));
+            setStaffList(mapped);
           }
         }
       } catch (err) {

@@ -82,6 +82,7 @@ async function main(): Promise<void> {
   // 1. Queen Saba Luxury Lounge (Bole) - Verified & Featured
   const salon1 = await prisma.salon.create({
     data: {
+      id: 'b045c798-6815-41fd-b784-a97c2e6aaeb0',
       ownerId: owner1.id,
       name: 'Queen Saba Luxury Lounge',
       slug: 'queen-saba-luxury-lounge',
@@ -108,6 +109,7 @@ async function main(): Promise<void> {
   // 2. Queen Saba VIP Spa & Wellness (Sarbet) - Verified & Featured
   const salon2 = await prisma.salon.create({
     data: {
+      id: 'fb3144c4-186e-4d26-a58b-181ccdddf5bb',
       ownerId: owner1.id,
       name: 'Queen Saba VIP Spa & Wellness',
       slug: 'queen-saba-vip-spa-wellness',
@@ -146,6 +148,7 @@ async function main(): Promise<void> {
   // 3. Kazanchis Glamour Studio (Kazanchis) - Verified & Featured
   const salon3 = await prisma.salon.create({
     data: {
+      id: '356cab1e-59de-43cb-971f-fc87403f933e',
       ownerId: owner2.id,
       name: 'Kazanchis Glamour Studio',
       slug: 'kazanchis-glamour-studio',
@@ -184,6 +187,7 @@ async function main(): Promise<void> {
   // 4. Habesha Executive Gentlemen Grooming (Old Airport) - Verified & Featured
   const salon4 = await prisma.salon.create({
     data: {
+      id: 'b9ec9cd1-a938-46b4-8c5a-f5284d0fcce6',
       ownerId: owner3.id,
       name: 'Habesha Executive Gentlemen Grooming',
       slug: 'habesha-executive-gentlemen-grooming',
@@ -219,6 +223,7 @@ async function main(): Promise<void> {
   // 5. Sarbet Beauty Bar (Sarbet) - Verified, Organic (isFeatured: false)
   const salon5 = await prisma.salon.create({
     data: {
+      id: 'fb06a2b5-8083-49d5-94ec-31fc318cd028',
       ownerId: owner4.id,
       name: 'Sarbet Beauty Bar',
       slug: 'sarbet-beauty-bar',
@@ -254,6 +259,7 @@ async function main(): Promise<void> {
   // 6. Old Airport Spa & Nails (Old Airport) - Verified, Organic (isFeatured: false)
   const salon6 = await prisma.salon.create({
     data: {
+      id: '4867a6c0-e63b-43b2-923e-2d6311d9d95b',
       ownerId: owner5.id,
       name: 'Old Airport Spa & Nails',
       slug: 'old-airport-spa-nails',
@@ -289,6 +295,7 @@ async function main(): Promise<void> {
   // 7. Luxe Glow Haven (Gerji) - UNVERIFIED (PENDING_REVIEW), Organic
   const salon7 = await prisma.salon.create({
     data: {
+      id: 'cd74af67-4fc5-406e-ba5c-544ea0bed42f',
       ownerId: owner6.id,
       name: 'Luxe Glow Haven (Gerji)',
       slug: 'luxe-glow-haven-gerji',
@@ -324,6 +331,7 @@ async function main(): Promise<void> {
   // 8. Eleni Botanical Hair & Spa (CMC) - Verified & Featured
   const salon8 = await prisma.salon.create({
     data: {
+      id: '07c5286a-457f-4a79-9ca0-d373a14cae01',
       ownerId: owner7.id,
       name: 'Eleni Botanical Hair & Spa (CMC)',
       slug: 'eleni-botanical-hair-spa-cmc',
@@ -359,6 +367,7 @@ async function main(): Promise<void> {
   // 9. Arada Heritage Barber & Traditional Lounge (Piassa) - UNVERIFIED (PENDING_REVIEW), Organic
   const salon9 = await prisma.salon.create({
     data: {
+      id: 'b93daf7c-080e-4a03-847f-9a1289f799ce',
       ownerId: owner8.id,
       name: 'Arada Heritage Barber & Traditional Lounge',
       slug: 'arada-heritage-barber-traditional-lounge',
@@ -394,6 +403,7 @@ async function main(): Promise<void> {
   // 10. Addis Urban Beauty Studio (Mexico) - Verified, Organic
   const salon10 = await prisma.salon.create({
     data: {
+      id: 'aeb19a3f-8c5e-4ada-b1ee-434b2411b7a9',
       ownerId: owner9.id,
       name: 'Addis Urban Beauty Studio (Mexico)',
       slug: 'addis-urban-beauty-studio-mexico',
@@ -551,28 +561,38 @@ async function main(): Promise<void> {
   // 6. Specialist Staff Members
   console.log('👩‍🔬 6. Creating staff profiles for salons...');
   const staffSpecs = [
+    // Salon 1: Queen Saba Luxury Lounge (Bole)
     {
+      id: 'st-bole-1',
       salonId: salon1.id,
       fullName: 'Selamawit Tadesse',
       phoneNumber: '+251921111111',
       title: 'Senior Hair Stylist & Silk Press Specialist',
       bio: 'Over 8 years experience in bespoke natural hair care.',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-bole-2',
       salonId: salon1.id,
       fullName: 'Eden Assefa',
       phoneNumber: '+251921111112',
       title: 'Spa & Nail Esthetician',
       bio: 'Expert in deluxe gel manicures and gold facials.',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-bole-3',
       salonId: salon1.id,
       fullName: 'Abebe Bikila',
       phoneNumber: '+251921111113',
       title: 'Master Grooming Specialist',
       bio: 'Specialist in precision fades and beard sculpting.',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     },
+
+    // Salon 2: Queen Saba VIP Spa & Wellness (Sarbet)
     {
+      id: 'st-sarbet-1',
       salonId: salon2.id,
       fullName: 'Meron Assefa',
       phoneNumber: '+251921111114',
@@ -581,6 +601,18 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-sarbet-2',
+      salonId: salon2.id,
+      fullName: 'Tigist Haile',
+      phoneNumber: '+251921111124',
+      title: 'Holistic Wellness & Deep Tissue Specialist',
+      bio: 'Specialist in hot volcanic stone massage and herbal wraps.',
+      avatarUrl: 'https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 3: Kazanchis Glamour Studio (Kazanchis)
+    {
+      id: 'st-kaz-1',
       salonId: salon3.id,
       fullName: 'Bethlehem Girma',
       phoneNumber: '+251921111123',
@@ -589,6 +621,7 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-kaz-2',
       salonId: salon3.id,
       fullName: 'Tewodros Kassaye',
       phoneNumber: '+251921111115',
@@ -596,7 +629,10 @@ async function main(): Promise<void> {
       bio: 'High-end styling and hot towel beard conditioning.',
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     },
+
+    // Salon 4: Habesha Executive Gentlemen Grooming (Old Airport)
     {
+      id: 'st-hab-1',
       salonId: salon4.id,
       fullName: 'Yared Alemu',
       phoneNumber: '+251921111116',
@@ -605,6 +641,18 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-hab-2',
+      salonId: salon4.id,
+      fullName: 'Fitsum Mengistu',
+      phoneNumber: '+251921111125',
+      title: 'Hot Towel Beard Sculpting Specialist',
+      bio: 'Precision straight-razor shaving and facial massage.',
+      avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 5: Sarbet Beauty Bar (Sarbet)
+    {
+      id: 'st-sbb-1',
       salonId: salon5.id,
       fullName: 'Helen Moges',
       phoneNumber: '+251921111117',
@@ -613,6 +661,18 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-sbb-2',
+      salonId: salon5.id,
+      fullName: 'Samrawit Bekele',
+      phoneNumber: '+251921111126',
+      title: 'Classic Blowout & Hair Care Specialist',
+      bio: 'Expert blowout styling and deep moisture conditioning.',
+      avatarUrl: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 6: Old Airport Spa & Nails (Old Airport)
+    {
+      id: 'st-oa-1',
       salonId: salon6.id,
       fullName: 'Kidist Tefera',
       phoneNumber: '+251921111118',
@@ -621,6 +681,18 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-oa-2',
+      salonId: salon6.id,
+      fullName: 'Senait Desta',
+      phoneNumber: '+251921111127',
+      title: 'Aromatherapy & Facial Specialist',
+      bio: 'Certified organic facial treatments and botanical exfoliation.',
+      avatarUrl: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 7: Luxe Glow Haven (Gerji)
+    {
+      id: 'st-lg-1',
       salonId: salon7.id,
       fullName: 'Meseret Desta',
       phoneNumber: '+251921111119',
@@ -629,6 +701,18 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-lg-2',
+      salonId: salon7.id,
+      fullName: 'Kalkidan Abebe',
+      phoneNumber: '+251921111128',
+      title: 'Skin Glow & Hydration Esthetician',
+      bio: 'Herbal steam therapy and hydration glow treatments.',
+      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 8: Eleni Botanical Hair & Spa (CMC)
+    {
+      id: 'st-eleni-1',
       salonId: salon8.id,
       fullName: 'Eleni Kebede',
       phoneNumber: '+251921111120',
@@ -637,6 +721,18 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-eleni-2',
+      salonId: salon8.id,
+      fullName: 'Martha Girma',
+      phoneNumber: '+251921111129',
+      title: 'Organic Herbal Steam & Scalp Therapist',
+      bio: 'Traditional Ethiopian koba oil infusion and scalp care.',
+      avatarUrl: 'https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 9: Arada Heritage Barber & Traditional Lounge (Piassa)
+    {
+      id: 'st-arada-1',
       salonId: salon9.id,
       fullName: 'Fikadu Bekele',
       phoneNumber: '+251921111121',
@@ -645,12 +741,33 @@ async function main(): Promise<void> {
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     },
     {
+      id: 'st-arada-2',
+      salonId: salon9.id,
+      fullName: 'Tesfaye Lemma',
+      phoneNumber: '+251921111130',
+      title: 'Heritage Razor Shave Specialist',
+      bio: 'Vintage hot towel straight-razor shave and head massage.',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+    },
+
+    // Salon 10: Addis Urban Beauty Studio (Mexico)
+    {
+      id: 'st-mex-1',
       salonId: salon10.id,
       fullName: 'Genet Alemu',
       phoneNumber: '+251921111122',
       title: 'Senior Hair & Brow Stylist',
       bio: 'Modern hair architecture and brow threading.',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    },
+    {
+      id: 'st-mex-2',
+      salonId: salon10.id,
+      fullName: 'Hiwot Kassaye',
+      phoneNumber: '+251921111131',
+      title: 'Modern Hair Architect & Colorist',
+      bio: 'Balayage, ombre, and contemporary architectural haircuts.',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
     },
   ];
 
@@ -675,6 +792,7 @@ async function main(): Promise<void> {
 
     await prisma.staffProfile.create({
       data: {
+        id: st.id,
         userId: user.id,
         salonId: st.salonId,
         title: st.title,

@@ -26,6 +26,37 @@ export class AppointmentService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  private readonly LEGACY_ID_MAP: Record<string, string> = {
+    'b045c798-6815-41fd-b784-a97c2e6aaeb0': 'queen-saba-luxury-lounge',
+    's1': 'queen-saba-luxury-lounge',
+    'fb3144c4-186e-4d26-a58b-181ccdddf5bb': 'queen-saba-vip-spa-wellness',
+    's2': 'kazanchis-glamour-studio',
+    's3': 'habesha-executive-gentlemen-grooming',
+    's4': 'sarbet-beauty-bar',
+    's5': 'old-airport-spa-nails',
+    's6-unverified-gerji': 'luxe-glow-haven-gerji',
+    's7-featured-cmc': 'eleni-botanical-hair-spa-cmc',
+    's8-unverified-piassa': 'arada-heritage-barber-traditional-lounge',
+    's9-mexico': 'addis-urban-beauty-studio-mexico',
+  };
+
+  async resolveSalonRecord(idOrSlug: string): Promise<any> {
+    const targetKey = this.LEGACY_ID_MAP[idOrSlug] || idOrSlug;
+    return this.prisma.salon.findFirst({
+      where: {
+        OR: [{ id: targetKey }, { slug: targetKey }],
+      },
+      include: {
+        workingHours: true,
+        staff: {
+          include: {
+            user: { select: { id: true, fullName: true, avatarUrl: true, phoneNumber: true } },
+          },
+        },
+      },
+    });
+  }
+
   async getAvailableSlots(dto: QueryAvailableSlotsDto): Promise<{
     date: string;
     salonId: string;
@@ -34,10 +65,7 @@ export class AppointmentService {
   }> {
     const { salonId, date, serviceIds, staffId } = dto;
 
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-      include: { workingHours: true },
-    });
+    const salon = await this.resolveSalonRecord(salonId);
 
     if (!salon || !salon.isActive) {
       throw new NotFoundException(`Salon with ID '${salonId}' not found or inactive`);
@@ -46,7 +74,7 @@ export class AppointmentService {
     const services = await this.prisma.service.findMany({
       where: {
         id: { in: serviceIds },
-        salonId,
+        salonId: salon.id,
         isActive: true,
       },
     });
@@ -61,7 +89,7 @@ export class AppointmentService {
     const targetDate = new Date(Date.UTC(year, month - 1, day));
     const dayOfWeek = targetDate.getUTCDay();
 
-    const schedule = salon.workingHours.find((wh) => wh.dayOfWeek === dayOfWeek);
+    const schedule = salon.workingHours.find((wh: any) => wh.dayOfWeek === dayOfWeek);
     if (!schedule || schedule.isClosed) {
       return {
         date,
@@ -163,18 +191,18 @@ export class AppointmentService {
       }
     }
 
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-    });
+    const salon = await this.resolveSalonRecord(salonId);
 
     if (!salon || !salon.isActive) {
       throw new NotFoundException(`Salon with ID '${salonId}' not found or inactive`);
     }
 
+    const targetSalonId = salon.id;
+
     const services = await this.prisma.service.findMany({
       where: {
         id: { in: serviceIds },
-        salonId,
+        salonId: targetSalonId,
         isActive: true,
       },
     });
@@ -183,12 +211,27 @@ export class AppointmentService {
       throw new BadRequestException('One or more selected services are invalid or inactive');
     }
 
+    // Resolve assigned staff strictly belonging to this salon
+    let assignedStaffId: string | null = null;
     if (staffId) {
       const staff = await this.prisma.staffProfile.findFirst({
-        where: { id: staffId, salonId, isAvailable: true },
+        where: {
+          OR: [{ id: staffId }, { userId: staffId }],
+          salonId: targetSalonId,
+          isAvailable: true,
+        },
       });
-      if (!staff) {
-        throw new NotFoundException(`Staff member with ID '${staffId}' not found or unavailable`);
+      if (staff) {
+        assignedStaffId = staff.id;
+      }
+    }
+
+    if (!assignedStaffId) {
+      const defaultStaff = await this.prisma.staffProfile.findFirst({
+        where: { salonId: targetSalonId, isAvailable: true },
+      });
+      if (defaultStaff) {
+        assignedStaffId = defaultStaff.id;
       }
     }
 
@@ -216,7 +259,7 @@ export class AppointmentService {
     const existingSameDayBookings = await this.prisma.appointment.findMany({
       where: {
         customerId: resolvedCustomerId,
-        salonId,
+        salonId: targetSalonId,
         status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
         startTime: { gte: dayStart, lte: dayEnd },
       },
@@ -234,20 +277,9 @@ export class AppointmentService {
       }
     }
 
-    // Automatically assign available staff member if none was explicitly chosen
-    let assignedStaffId = staffId;
-    if (!assignedStaffId) {
-      const defaultStaff = await this.prisma.staffProfile.findFirst({
-        where: { salonId, isAvailable: true },
-      });
-      if (defaultStaff) {
-        assignedStaffId = defaultStaff.id;
-      }
-    }
-
     const endTime = new Date(startTime.getTime() + totalDurationMin * 60 * 1000);
 
-    const lockKey = `lock:slot:${staffId || 'salon:' + salonId}:${startTime.toISOString()}`;
+    const lockKey = `lock:slot:${assignedStaffId || 'salon:' + targetSalonId}:${startTime.toISOString()}`;
     const existingLock = await this.redis.get(lockKey);
     if (existingLock) {
       throw new ConflictException(
@@ -257,8 +289,8 @@ export class AppointmentService {
 
     const existingConflict = await this.prisma.appointment.findFirst({
       where: {
-        salonId,
-        ...(staffId && { staffId }),
+        salonId: targetSalonId,
+        ...(assignedStaffId && { staffId: assignedStaffId }),
         status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
         startTime: { lt: endTime },
         endTime: { gt: startTime },
@@ -279,7 +311,7 @@ export class AppointmentService {
           data: {
             bookingCode,
             customerId: resolvedCustomerId,
-            salonId,
+            salonId: targetSalonId,
             staffId: assignedStaffId || null,
             status: AppointmentStatus.CONFIRMED,
             startTime,
@@ -367,15 +399,39 @@ export class AppointmentService {
     user: { id: string; role: UserRole } | null,
     query: QueryAppointmentDto,
   ): Promise<{ data: any[]; meta: any }> {
+    const LEGACY_ID_MAP: Record<string, string> = {
+      'b045c798-6815-41fd-b784-a97c2e6aaeb0': 'queen-saba-luxury-lounge',
+      's1': 'queen-saba-luxury-lounge',
+      'fb3144c4-186e-4d26-a58b-181ccdddf5bb': 'queen-saba-vip-spa-wellness',
+      's2': 'kazanchis-glamour-studio',
+      's3': 'habesha-executive-gentlemen-grooming',
+      's4': 'sarbet-beauty-bar',
+      's5': 'old-airport-spa-nails',
+      's6-unverified-gerji': 'luxe-glow-haven-gerji',
+      's7-featured-cmc': 'eleni-botanical-hair-spa-cmc',
+      's8-unverified-piassa': 'arada-heritage-barber-traditional-lounge',
+      's9-mexico': 'addis-urban-beauty-studio-mexico',
+    };
+
+    let targetSalonId = salonId;
+    const targetKey = LEGACY_ID_MAP[salonId] || salonId;
+    const resolvedSalon = await this.prisma.salon.findFirst({
+      where: { OR: [{ id: targetKey }, { slug: targetKey }] },
+      select: { id: true },
+    });
+    if (resolvedSalon) {
+      targetSalonId = resolvedSalon.id;
+    }
+
     if (user) {
-      await this.verifySalonStaffOrOwnerPermission(salonId, user);
+      await this.verifySalonStaffOrOwnerPermission(targetSalonId, user);
     }
 
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = { salonId };
+    const where: any = { salonId: targetSalonId };
     if (query.status) {
       where.status = query.status;
     }

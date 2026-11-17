@@ -121,6 +121,14 @@ export const MOCK_SALONS: Salon[] = [
         rating: 5.0,
         isAvailable: true,
       },
+      {
+        id: 'st-sarbet-2',
+        fullName: 'Tigist Haile',
+        title: 'Holistic Wellness & Deep Tissue Specialist',
+        avatarUrl: 'https://images.unsplash.com/photo-1589156280159-27698a70f29e?auto=format&fit=crop&w=300&q=80',
+        rating: 4.9,
+        isAvailable: true,
+      },
     ],
     services: [
       {

@@ -421,8 +421,52 @@ export default function CalendarView({
 
     if (!customerName.trim() || !serviceObj) return;
 
+    const salonId = getActiveSalonId();
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_token') : null;
+
+    let createdId = `apt-${Date.now()}`;
+    if (salonId) {
+      try {
+        const match = selectedTimeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        let hours = 10;
+        let minutes = 0;
+        if (match) {
+          hours = parseInt(match[1], 10);
+          minutes = parseInt(match[2], 10);
+          const period = match[3].toUpperCase();
+          if (period === 'PM' && hours !== 12) hours += 12;
+          if (period === 'AM' && hours === 12) hours = 0;
+        }
+        const [y, m, d] = selectedDate.split('-').map(Number);
+        const startTime = new Date(y, m - 1, d, hours, minutes, 0).toISOString();
+
+        const res = await fetch('http://localhost:4000/appointments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            salonId,
+            serviceIds: [serviceObj.id],
+            staffId: staffObj?.id || undefined,
+            startTime,
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim() || '+251911000000',
+            notes,
+          }),
+        });
+        if (res.ok) {
+          const apiData = await res.json();
+          if (apiData.id) createdId = apiData.id;
+        }
+      } catch (e) {
+        console.warn('Backend appointment creation sync fallback:', e);
+      }
+    }
+
     const newApt: Appointment = {
-      id: `apt-${Date.now()}`,
+      id: createdId,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim() || '+251 91 000 0000',
       serviceId: serviceObj.id,
@@ -437,14 +481,14 @@ export default function CalendarView({
       notes,
     };
 
-    const updated = [newApt, ...appointments];
+    const updated = [newApt, ...appointments.filter((a) => a.id !== createdId)];
     setAppointments(updated);
 
-    // Save in localStorage for real-time consistency
+    // Save in localStorage for real-time cross-tab consistency
     try {
       const stored = localStorage.getItem('aurasalon_appointments');
       const parsed = stored ? JSON.parse(stored) : [];
-      localStorage.setItem('aurasalon_appointments', JSON.stringify([newApt, ...parsed]));
+      localStorage.setItem('aurasalon_appointments', JSON.stringify([newApt, ...parsed.filter((a: any) => a.id !== createdId)]));
       window.dispatchEvent(new Event('aurasalon_appointments_changed'));
     } catch (e) {}
 
@@ -452,6 +496,7 @@ export default function CalendarView({
     setCustomerName('');
     setCustomerPhone('');
     setNotes('');
+    fetchAppointments(selectedDate);
   };
 
   const handleClearAllAppointments = async () => {

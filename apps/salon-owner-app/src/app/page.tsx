@@ -21,9 +21,41 @@ export default function DashboardPage() {
   const loadSalonDetails = useCallback(async (salonId: string) => {
     if (!salonId) return;
     try {
-      const res = await fetch(`http://localhost:4000/salons/${salonId}`);
+      let res = await fetch(`http://localhost:4000/salons/${salonId}`);
+      let salon = null;
       if (res.ok) {
-        const salon = await res.json();
+        salon = await res.json();
+      } else {
+        // If salonId failed to fetch, look up available salons and match the user's intended branch
+        const listRes = await fetch('http://localhost:4000/salons?limit=20');
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const allSalons: any[] = listData.data || [];
+          // Match by ID, slug, or matching name from stored user's ownedSalons
+          const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_user') : null;
+          let matched: any = null;
+          if (storedUserStr) {
+            try {
+              const u = JSON.parse(storedUserStr);
+              const targetSalon = u.ownedSalons?.find((s: any) => s.id === salonId) || u.ownedSalons?.[0];
+              if (targetSalon) {
+                matched = allSalons.find((s: any) => s.name === targetSalon.name || s.slug === targetSalon.slug);
+              }
+            } catch (e) {}
+          }
+          salon = matched || allSalons.find((s: any) => s.id === salonId) || null;
+          if (salon) {
+            localStorage.setItem('aurasalon_active_salon_id', salon.id);
+            setActiveSalonId(salon.id);
+          }
+        }
+      }
+
+      if (salon) {
+        if (salon.id) {
+          localStorage.setItem('aurasalon_active_salon_id', salon.id);
+          setActiveSalonId(salon.id);
+        }
         if (salon.name) setSalonName(salon.name);
         if (salon.subCity) setSubCity(salon.subCity);
         if (salon.status) {
@@ -31,11 +63,11 @@ export default function DashboardPage() {
           localStorage.setItem('aurasalon_salon_status', salon.status);
         }
 
-        // Map real staff profiles from backend database
+        // Map real staff profiles belonging to this specific salon
         if (Array.isArray(salon.staff)) {
           const mappedStaff: StaffMember[] = salon.staff.map((s: any) => ({
             id: s.id,
-            name: s.user?.fullName || 'Staff Specialist',
+            name: s.user?.fullName || 'Specialist',
             role: s.title || 'Stylist',
             avatarUrl:
               s.user?.avatarUrl ||
@@ -48,6 +80,8 @@ export default function DashboardPage() {
             totalBookingsToday: 0,
           }));
           setStaffList(mappedStaff);
+        } else {
+          setStaffList([]);
         }
 
         // Map real services from backend categories
@@ -79,6 +113,27 @@ export default function DashboardPage() {
       router.push('/login');
       return;
     }
+
+    // Verify session with backend /auth/me
+    fetch('http://localhost:4000/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (res.ok) {
+          return res.json();
+        } else if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('aurasalon_owner_token');
+          localStorage.removeItem('aurasalon_owner_user');
+          router.push('/login');
+          return null;
+        }
+      })
+      .then((verifiedUser) => {
+        if (verifiedUser) {
+          localStorage.setItem('aurasalon_owner_user', JSON.stringify(verifiedUser));
+        }
+      })
+      .catch(() => {});
 
     try {
       const user = JSON.parse(storedUser);

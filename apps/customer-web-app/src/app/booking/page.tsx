@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MOCK_SALONS } from '@/data/mockData';
 import { PaymentMethod, Service, Appointment, Salon } from '@/types';
 import { getStoredUser, setStoredUser } from '@/utils/authStore';
 import { saveNewAppointment } from '@/utils/appointmentStore';
@@ -35,41 +34,46 @@ function BookingForm() {
   const serviceIdsParam = searchParams.get('services') || '';
   const staffIdParam = searchParams.get('staffId') || '';
 
-  // Real or fallback target salon
-  const [targetSalon, setTargetSalon] = useState<Salon>(() => {
-    return MOCK_SALONS.find((s) => s.id === salonIdParam || s.slug === salonIdParam) || MOCK_SALONS[0];
-  });
-
+  const [targetSalon, setTargetSalon] = useState<Salon | null>(null);
+  const [isLoadingSalon, setIsLoadingSalon] = useState(true);
   const [selectedStaffId, setSelectedStaffId] = useState<string>(staffIdParam);
 
   // Fetch real salon from backend database
   useEffect(() => {
+    let isMounted = true;
     async function loadSalonData() {
+      setIsLoadingSalon(true);
       const targetId = salonIdParam && salonIdParam !== 's1' ? salonIdParam : defaultSalonId;
       let real = await fetchSalonById(targetId);
       if (!real) {
         real = await fetchSalonBySlug(targetId);
       }
-      if (real) {
-        setTargetSalon(real);
-        if (staffIdParam) {
-          setSelectedStaffId(staffIdParam);
-        } else if (real.staff && real.staff.length > 0 && !selectedStaffId) {
-          setSelectedStaffId(real.staff[0].id);
+      if (isMounted) {
+        if (real) {
+          setTargetSalon(real);
+          if (staffIdParam) {
+            setSelectedStaffId(staffIdParam);
+          } else if (real.staff && real.staff.length > 0) {
+            setSelectedStaffId(real.staff[0].id);
+          }
         }
+        setIsLoadingSalon(false);
       }
     }
     loadSalonData();
+    return () => {
+      isMounted = false;
+    };
   }, [salonIdParam, staffIdParam]);
 
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  const initialServiceIds = serviceIdsParam.split(',');
-  const matchedServices: Service[] = targetSalon.services.filter((s) =>
+  const initialServiceIds = serviceIdsParam ? serviceIdsParam.split(',') : [];
+  const matchedServices: Service[] = (targetSalon?.services || []).filter((s) =>
     initialServiceIds.includes(s.id)
   );
   const selectedServices: Service[] =
-    matchedServices.length > 0 ? matchedServices : targetSalon.services.slice(0, 1);
+    matchedServices.length > 0 ? matchedServices : (targetSalon?.services || []).slice(0, 1);
 
   // Auth Interception State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -463,6 +467,15 @@ function BookingForm() {
     setShowAuthModal(false);
     await processBooking(authToken || undefined);
   };
+
+  if (isLoadingSalon || !targetSalon) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-[var(--aura-gold)]/20 border-t-[var(--aura-gold)] rounded-full animate-spin" />
+        <p className="text-sm text-[var(--text-secondary)] font-medium">Loading salon services and specialists...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">

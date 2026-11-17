@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getStoredUser, logoutUser, setStoredUser, UserProfile } from '@/utils/authStore';
+import { getStoredUser, logoutUser, setStoredUser, validateSession, UserProfile } from '@/utils/authStore';
 import { useTheme } from '@/context/ThemeContext';
 import { SunIcon, MoonIcon, UserIcon } from '@/components/icons/Icons';
 
@@ -35,6 +35,16 @@ export default function Navbar() {
       }
     };
     syncUser();
+
+    // Validate real session against backend
+    validateSession().then((u) => {
+      if (u) {
+        setCurrentUser(u);
+        setEditName(u.fullName || '');
+        setEditPhone(u.phoneNumber || '');
+        setEditEmail(u.email || '');
+      }
+    });
 
     window.addEventListener('aurasalon_auth_changed', syncUser);
     window.addEventListener('storage', syncUser);

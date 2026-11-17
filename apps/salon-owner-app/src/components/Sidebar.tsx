@@ -57,16 +57,24 @@ export default function Sidebar() {
 
         if (savedActive && parsed.ownedSalons?.some((s: any) => s.id === savedActive)) {
           setActiveSalonId(savedActive);
-        } else {
+        } else if (defaultId) {
           setActiveSalonId(defaultId);
-          if (defaultId) {
-            localStorage.setItem('aurasalon_active_salon_id', defaultId);
-          }
+          localStorage.setItem('aurasalon_active_salon_id', defaultId);
         }
       } catch (e) {
         console.error('Failed to parse aurasalon_owner_user:', e);
       }
     }
+
+    const onSalonChange = () => {
+      const active = localStorage.getItem('aurasalon_active_salon_id');
+      if (active) setActiveSalonId(active);
+    };
+
+    window.addEventListener('aurasalon_active_salon_changed', onSalonChange);
+    return () => {
+      window.removeEventListener('aurasalon_active_salon_changed', onSalonChange);
+    };
   }, []);
 
   const handleLogout = () => {

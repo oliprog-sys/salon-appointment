@@ -1,5 +1,4 @@
 import { Salon, Service, StaffProfile, SubCity } from '@/types';
-import { MOCK_SALONS } from '@/data/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -28,33 +27,21 @@ export function mapBackendSalonToCustomer(backendSalon: any): Salon {
     }
   }
 
-  // Normalize staff
+  // Normalize staff belonging exclusively to this salon
   const rawStaff = backendSalon.staff || [];
-  const staff: StaffProfile[] =
-    rawStaff.length > 0
-      ? rawStaff.map((st: any) => ({
-          id: st.id,
-          fullName: st.user?.fullName || 'Master Stylist',
-          title: st.title || 'Beauty & Wellness Specialist',
-          avatarUrl:
-            st.user?.avatarUrl ||
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-          rating: 4.9,
-          isAvailable: st.isAvailable ?? true,
-        }))
-      : [
-          {
-            id: `st-default-${backendSalon.id}`,
-            fullName: 'Master Stylist & Artist',
-            title: 'Senior Salon Specialist',
-            avatarUrl:
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-            rating: 4.9,
-            isAvailable: true,
-          },
-        ];
+  const staff: StaffProfile[] = rawStaff.map((st: any) => ({
+    id: st.id,
+    fullName: st.user?.fullName || st.fullName || 'Master Stylist',
+    title: st.title || 'Beauty & Wellness Specialist',
+    avatarUrl:
+      st.user?.avatarUrl ||
+      st.avatarUrl ||
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    rating: 4.9,
+    isAvailable: st.isAvailable ?? true,
+  }));
 
-  // Normalize subCity dynamically without restricting to legacy 5 districts
+  // Normalize subCity dynamically
   const normalizedSubCity = (backendSalon.subCity || 'Bole').trim();
 
   return {
@@ -97,18 +84,18 @@ export async function fetchAllSalons(): Promise<Salon[]> {
       cache: 'no-store',
     });
     if (!res.ok) {
-      console.warn(`[salonApi] Backend returned ${res.status}. Falling back to initial seed.`);
-      return MOCK_SALONS;
+      console.warn(`[salonApi] Backend returned ${res.status}.`);
+      return [];
     }
     const json = await res.json();
     const rawSalons = json.data || json;
     if (Array.isArray(rawSalons) && rawSalons.length > 0) {
       return rawSalons.map(mapBackendSalonToCustomer);
     }
-    return MOCK_SALONS;
+    return [];
   } catch (error) {
-    console.warn('[salonApi] Could not reach backend API. Falling back to local data:', error);
-    return MOCK_SALONS;
+    console.error('[salonApi] Could not reach backend API:', error);
+    return [];
   }
 }
 
@@ -122,11 +109,9 @@ export async function fetchSalonBySlug(slug: string): Promise<Salon | null> {
       return mapBackendSalonToCustomer(data);
     }
   } catch (error) {
-    console.warn(`[salonApi] Failed to fetch salon by slug '${slug}':`, error);
+    console.error(`[salonApi] Failed to fetch salon by slug '${slug}':`, error);
   }
-  // Fallback to local mock data
-  const fallback = MOCK_SALONS.find((s) => s.slug === slug);
-  return fallback || null;
+  return null;
 }
 
 export async function fetchSalonById(id: string): Promise<Salon | null> {
@@ -139,9 +124,7 @@ export async function fetchSalonById(id: string): Promise<Salon | null> {
       return mapBackendSalonToCustomer(data);
     }
   } catch (error) {
-    console.warn(`[salonApi] Failed to fetch salon by ID '${id}':`, error);
+    console.error(`[salonApi] Failed to fetch salon by ID '${id}':`, error);
   }
-  // Fallback to local mock data
-  const fallback = MOCK_SALONS.find((s) => s.id === id);
-  return fallback || null;
+  return null;
 }

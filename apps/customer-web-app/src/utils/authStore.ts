@@ -39,3 +39,31 @@ export const logoutUser = () => {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   window.dispatchEvent(new Event('aurasalon_auth_changed'));
 };
+
+export const validateSession = async (): Promise<UserProfile | null> => {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) return null;
+
+  try {
+    const res = await fetch('http://localhost:4000/auth/me', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.ok) {
+      const user = await res.json();
+      setStoredUser(user, token);
+      return user;
+    } else if (res.status === 401 || res.status === 403) {
+      logoutUser();
+      return null;
+    }
+    return getStoredUser();
+  } catch (err) {
+    // If backend network error, temporarily keep stored session
+    return getStoredUser();
+  }
+};
+
