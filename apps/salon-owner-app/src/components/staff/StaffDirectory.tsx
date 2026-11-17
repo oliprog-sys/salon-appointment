@@ -26,14 +26,15 @@ export default function StaffDirectory({
   salonName,
 }: StaffDirectoryProps) {
   const [staffList, setStaffList] = useState<StaffMember[]>(initialStaff);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
 
   // Synchronize when initialStaff prop changes from parent
   useEffect(() => {
     setStaffList(initialStaff);
   }, [initialStaff]);
 
-  // New staff form state
+  // Add staff form state
   const [name, setName] = useState('');
   const [role, setRole] = useState('Hair Stylist & Specialist');
   const [phone, setPhone] = useState('');
@@ -42,17 +43,73 @@ export default function StaffDirectory({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [staffError, setStaffError] = useState<string | null>(null);
 
-  const toggleStatus = (id: string) => {
-    setStaffList((prev) =>
-      prev.map((s) => {
-        if (s.id !== id) return s;
-        const nextStatus =
-          s.status === 'ON_SHIFT' ? 'ON_BREAK' : s.status === 'ON_BREAK' ? 'OFF_DUTY' : 'ON_SHIFT';
-        return { ...s, status: nextStatus };
-      })
+  // Edit staff form state
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editSpecialties, setEditSpecialties] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editStatus, setEditStatus] = useState<StaffMember['status']>('ON_SHIFT');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Deleting staff state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const getTargetSalonId = () => {
+    return (
+      activeSalonId ||
+      (typeof window !== 'undefined' ? localStorage.getItem('aurasalon_active_salon_id') : '') ||
+      ''
     );
   };
 
+  const getToken = () => {
+    return typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_token') : null;
+  };
+
+  // Toggle or switch Duty Status with Database Persistence
+  const handleUpdateDutyStatus = async (id: string, nextStatus: StaffMember['status']) => {
+    // Optimistically update local UI state
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: nextStatus } : s))
+    );
+
+    try {
+      const targetSalonId = getTargetSalonId();
+      const token = getToken();
+
+      if (targetSalonId) {
+        await fetch(`http://localhost:4000/salons/${targetSalonId}/staff/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            dutyStatus: nextStatus,
+            isAvailable: nextStatus === 'ON_SHIFT',
+          }),
+        });
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('aurasalon_staff_changed'));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update duty status on backend:', err);
+    }
+  };
+
+  const toggleStatus = (id: string) => {
+    const current = staffList.find((s) => s.id === id);
+    if (!current) return;
+    const nextStatus: StaffMember['status'] =
+      current.status === 'ON_SHIFT' ? 'ON_BREAK' : current.status === 'ON_BREAK' ? 'OFF_DUTY' : 'ON_SHIFT';
+    handleUpdateDutyStatus(id, nextStatus);
+  };
+
+  // Add new staff member
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -60,12 +117,8 @@ export default function StaffDirectory({
     setIsSubmitting(true);
     setStaffError(null);
     try {
-      const targetSalonId =
-        activeSalonId ||
-        (typeof window !== 'undefined' ? localStorage.getItem('aurasalon_active_salon_id') : '') ||
-        '';
-
-      const token = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_token') : null;
+      const targetSalonId = getTargetSalonId();
+      const token = getToken();
 
       let createdStaffId = `st-${Date.now()}`;
       let createdName = name.trim();
@@ -120,7 +173,7 @@ export default function StaffDirectory({
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('aurasalon_staff_changed'));
       }
-      setIsModalOpen(false);
+      setIsAddModalOpen(false);
       setName('');
       setPhone('');
       setStaffError(null);
@@ -130,6 +183,126 @@ export default function StaffDirectory({
       setStaffError(err.message || 'Error adding staff member to database.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Open Edit Modal
+  const openEditModal = (st: StaffMember) => {
+    setEditingStaff(st);
+    setEditName(st.name);
+    setEditRole(st.role);
+    setEditPhone(st.phone);
+    setEditSpecialties(st.specialties.join(', '));
+    setEditAvatar(st.avatarUrl);
+    setEditStatus(st.status);
+    setEditError(null);
+  };
+
+  // Save Edited Staff Member
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff || !editName.trim()) return;
+
+    setIsUpdating(true);
+    setEditError(null);
+    try {
+      const targetSalonId = getTargetSalonId();
+      const token = getToken();
+
+      if (targetSalonId) {
+        const res = await fetch(
+          `http://localhost:4000/salons/${targetSalonId}/staff/${editingStaff.id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              fullName: editName.trim(),
+              title: editRole.trim() || 'Staff Specialist',
+              phoneNumber: editPhone.trim() || undefined,
+              avatarUrl: editAvatar,
+              bio: editSpecialties.trim(),
+              dutyStatus: editStatus,
+              isAvailable: editStatus === 'ON_SHIFT',
+            }),
+          }
+        );
+
+        const data = await res.json();
+        if (!res.ok) {
+          const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+          throw new Error(msg || 'Failed to update staff member in database');
+        }
+      }
+
+      setStaffList((prev) =>
+        prev.map((s) =>
+          s.id === editingStaff.id
+            ? {
+                ...s,
+                name: editName.trim(),
+                role: editRole.trim() || 'Staff Specialist',
+                phone: editPhone.trim(),
+                avatarUrl: editAvatar,
+                specialties: editSpecialties.split(',').map((sp) => sp.trim()).filter(Boolean),
+                status: editStatus,
+              }
+            : s
+        )
+      );
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('aurasalon_staff_changed'));
+      }
+      setEditingStaff(null);
+    } catch (err: any) {
+      console.error('Error updating staff member:', err);
+      setEditError(err.message || 'Error updating staff member profile.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Delete / Remove Staff Member
+  const handleDeleteStaff = async (st: StaffMember) => {
+    const confirmed = confirm(
+      `Are you sure you want to remove "${st.name}" (${st.role}) from this salon? They will no longer appear on the salon roster or timetable.`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(st.id);
+    try {
+      const targetSalonId = getTargetSalonId();
+      const token = getToken();
+
+      if (targetSalonId) {
+        const res = await fetch(
+          `http://localhost:4000/salons/${targetSalonId}/staff/${st.id}`,
+          {
+            method: 'DELETE',
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+          throw new Error(msg || 'Failed to remove staff member from database');
+        }
+      }
+
+      setStaffList((prev) => prev.filter((s) => s.id !== st.id));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('aurasalon_staff_changed'));
+      }
+    } catch (err: any) {
+      alert(`Error removing staff member: ${err.message || 'Network error'}`);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -165,7 +338,7 @@ export default function StaffDirectory({
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsAddModalOpen(true)}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
         >
           + Add Staff to {salonName ? salonName.split(' ')[0] : 'Branch'}
@@ -185,47 +358,71 @@ export default function StaffDirectory({
           staffList.map((st) => (
             <div
               key={st.id}
-              className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between"
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={st.avatarUrl}
-                    alt={st.name}
-                    className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500/30 shadow-xs"
-                  />
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm leading-snug">{st.name}</h3>
-                    <p className="text-xs text-slate-500 font-medium">{st.role}</p>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">{st.phone}</p>
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={st.avatarUrl}
+                      alt={st.name}
+                      className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500/30 shadow-xs shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-slate-900 text-sm leading-snug truncate">{st.name}</h3>
+                      <p className="text-xs text-slate-500 font-medium truncate">{st.role}</p>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">{st.phone}</p>
+                    </div>
+                  </div>
+
+                  {/* Actions & Badge */}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span
+                      className={`px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase rounded-full border ${getStatusBadge(
+                        st.status
+                      )}`}
+                    >
+                      {st.status.replace('_', ' ')}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(st)}
+                        className="p-1.5 text-xs text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition"
+                        title="Edit Specialist Profile"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingId === st.id}
+                        onClick={() => handleDeleteStaff(st)}
+                        className="p-1.5 text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition disabled:opacity-50"
+                        title="Remove Specialist from Salon"
+                      >
+                        {deletingId === st.id ? '⌛' : '🗑️'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <span
-                  className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase rounded-full border ${getStatusBadge(
-                    st.status
-                  )}`}
-                >
-                  {st.status.replace('_', ' ')}
-                </span>
-              </div>
-
-              {/* Specialties Tags */}
-              <div className="my-4">
-                <p className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1.5">Specialties</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {st.specialties && st.specialties.length > 0 ? (
-                    st.specialties.map((spec, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-medium"
-                      >
-                        {spec}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-slate-400 text-[11px] italic">General Specialist</span>
-                  )}
+                {/* Specialties Tags */}
+                <div className="my-4">
+                  <p className="text-[10px] uppercase font-mono text-slate-400 font-semibold mb-1.5">Specialties</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {st.specialties && st.specialties.length > 0 ? (
+                      st.specialties.map((spec, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-medium"
+                        >
+                          {spec}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-slate-400 text-[11px] italic">General Specialist</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -234,12 +431,19 @@ export default function StaffDirectory({
                 <div className="text-slate-500 font-mono text-[11px]">
                   <span>🕒 {st.workingHours}</span>
                 </div>
-                <button
-                  onClick={() => toggleStatus(st.id)}
-                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition cursor-pointer"
-                >
-                  Change Duty Status
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={st.status}
+                    onChange={(e) =>
+                      handleUpdateDutyStatus(st.id, e.target.value as StaffMember['status'])
+                    }
+                    className="text-xs font-semibold py-1 px-2 border border-slate-300 rounded-md bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="ON_SHIFT">🟢 On Shift</option>
+                    <option value="ON_BREAK">🟡 On Break</option>
+                    <option value="OFF_DUTY">⚪ Off Duty</option>
+                  </select>
+                </div>
               </div>
             </div>
           ))
@@ -247,7 +451,7 @@ export default function StaffDirectory({
       </div>
 
       {/* ADD STAFF MODAL */}
-      {isModalOpen && (
+      {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
             <div className="p-5 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
@@ -258,8 +462,8 @@ export default function StaffDirectory({
                 </p>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 font-bold"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -324,42 +528,182 @@ export default function StaffDirectory({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">Phone Number (+251)</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Phone Number (Optional)</label>
                 <input
                   type="text"
-                  placeholder="+251 91 222 3333"
+                  placeholder="e.g. +251 91 234 5678"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono font-medium"
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">Specialties (Comma Separated)</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Specialties (Comma Separated)
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Silk Press, Protein Treatment, Scalp Detox"
+                  placeholder="e.g. Balayage, Silk Press, Scalp Care"
                   value={specialties}
                   onChange={(e) => setSpecialties(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-100 cursor-pointer"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? 'Saving...' : 'Save Staff Member'}
+                  {isSubmitting ? 'Registering Staff...' : 'Add Specialist'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT STAFF MODAL */}
+      {editingStaff && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-base text-white">Edit Specialist Profile</h3>
+                <p className="text-xs text-slate-400">
+                  Update employee details for: <span className="text-emerald-400 font-semibold">{editingStaff.name}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingStaff(null)}
+                className="text-slate-400 hover:text-white p-1 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+              {editError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium animate-in fade-in">
+                  ⚠️ {editError}
+                </div>
+              )}
+
+              {/* Profile Photo Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  Update Profile Photo
+                </label>
+                <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                  {AVATAR_PRESETS.map((avatar, idx) => (
+                    <img
+                      key={idx}
+                      src={avatar}
+                      alt={`Avatar ${idx + 1}`}
+                      onClick={() => setEditAvatar(avatar)}
+                      className={`w-10 h-10 rounded-full object-cover cursor-pointer border-2 transition ${
+                        editAvatar === avatar
+                          ? 'border-emerald-500 scale-110 shadow-md ring-2 ring-emerald-300'
+                          : 'border-slate-200 opacity-60 hover:opacity-100'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Role Title</label>
+                <input
+                  type="text"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">Duty Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as StaffMember['status'])}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium cursor-pointer"
+                >
+                  <option value="ON_SHIFT">🟢 On Shift (Accepting Bookings)</option>
+                  <option value="ON_BREAK">🟡 On Break (Temporarily Paused)</option>
+                  <option value="OFF_DUTY">⚪ Off Duty (Not Available)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Specialties (Comma Separated)
+                </label>
+                <input
+                  type="text"
+                  value={editSpecialties}
+                  onChange={(e) => setEditSpecialties(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const st = editingStaff;
+                    setEditingStaff(null);
+                    handleDeleteStaff(st);
+                  }}
+                  className="text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1 rounded hover:bg-rose-50 transition cursor-pointer"
+                >
+                  Remove Specialist
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStaff(null)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdating}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isUpdating ? 'Saving Changes...' : 'Save Profile Changes'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

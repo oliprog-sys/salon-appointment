@@ -1008,9 +1008,20 @@ export default function CalendarView({
                           />
                           <div>
                             <p className="font-bold text-slate-900 text-xs">{st.name}</p>
-                            <p className="text-[10px] text-slate-500 font-sans font-medium">
-                              {st.role.split('&')[0]} • {st.status.replace('_', ' ')}
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  st.status === 'ON_SHIFT'
+                                    ? 'bg-emerald-500 animate-pulse'
+                                    : st.status === 'ON_BREAK'
+                                    ? 'bg-amber-500'
+                                    : 'bg-slate-400'
+                                }`}
+                              />
+                              <p className="text-[10px] text-slate-500 font-sans font-medium">
+                                {st.role.split('&')[0]} • {st.status.replace('_', ' ')}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </th>

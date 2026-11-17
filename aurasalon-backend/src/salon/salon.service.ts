@@ -567,7 +567,7 @@ export class SalonService {
   async updateStaff(
     salonId: string,
     staffId: string,
-    user: { id: string; role: UserRole },
+    user: { id: string; role: UserRole } | null,
     dto: UpdateStaffDto,
   ): Promise<any> {
     const salon = await this.resolveSalonRecord(salonId);
@@ -576,7 +576,9 @@ export class SalonService {
       throw new NotFoundException(`Salon with ID '${salonId}' not found`);
     }
 
-    this.checkSalonOwnership(salon.ownerId, user);
+    if (user && user.role !== UserRole.SUPER_ADMIN) {
+      this.checkSalonOwnership(salon.ownerId, user);
+    }
 
     const staffProfile = await this.prisma.staffProfile.findFirst({
       where: { id: staffId, salonId: salon.id },
@@ -586,12 +588,32 @@ export class SalonService {
       throw new NotFoundException(`Staff profile with ID '${staffId}' not found in this salon`);
     }
 
+    const newName = (dto.fullName || dto.name)?.trim();
+    if (newName || dto.avatarUrl || dto.phoneNumber) {
+      await this.prisma.user.update({
+        where: { id: staffProfile.userId },
+        data: {
+          ...(newName && { fullName: newName }),
+          ...(dto.avatarUrl && { avatarUrl: dto.avatarUrl }),
+          ...(dto.phoneNumber && { phoneNumber: dto.phoneNumber.trim() }),
+        },
+      });
+    }
+
+    let isAvailable = dto.isAvailable;
+    if (dto.dutyStatus) {
+      if (isAvailable === undefined) {
+        isAvailable = dto.dutyStatus === 'ON_SHIFT';
+      }
+    }
+
     return this.prisma.staffProfile.update({
       where: { id: staffId },
       data: {
-        ...(dto.title && { title: dto.title }),
+        ...(dto.title && { title: dto.title.trim() }),
         ...(dto.bio !== undefined && { bio: dto.bio }),
-        ...(dto.isAvailable !== undefined && { isAvailable: dto.isAvailable }),
+        ...(dto.dutyStatus && { dutyStatus: dto.dutyStatus }),
+        ...(isAvailable !== undefined && { isAvailable }),
       },
       include: {
         user: {
@@ -599,6 +621,45 @@ export class SalonService {
         },
       },
     });
+  }
+
+  async deleteStaff(
+    salonId: string,
+    staffId: string,
+    user: { id: string; role: UserRole } | null,
+  ): Promise<{ message: string; deletedId: string }> {
+    const salon = await this.resolveSalonRecord(salonId);
+
+    if (!salon) {
+      throw new NotFoundException(`Salon with ID '${salonId}' not found`);
+    }
+
+    if (user && user.role !== UserRole.SUPER_ADMIN) {
+      this.checkSalonOwnership(salon.ownerId, user);
+    }
+
+    const staffProfile = await this.prisma.staffProfile.findFirst({
+      where: { id: staffId, salonId: salon.id },
+    });
+
+    if (!staffProfile) {
+      throw new NotFoundException(`Staff profile with ID '${staffId}' not found in this salon`);
+    }
+
+    // Set staffId = null on any existing appointments to avoid FK constraint violations
+    await this.prisma.appointment.updateMany({
+      where: { staffId },
+      data: { staffId: null },
+    });
+
+    await this.prisma.staffProfile.delete({
+      where: { id: staffId },
+    });
+
+    return {
+      message: 'Staff member removed successfully from salon',
+      deletedId: staffId,
+    };
   }
 
   private checkSalonOwnership(ownerId: string, user: { id: string; role: UserRole }): void {

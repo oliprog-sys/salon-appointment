@@ -69,9 +69,9 @@ export default function StaffPage() {
                 s.user?.avatarUrl ||
                 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
               phone: s.user?.phoneNumber || '',
-              specialties: [],
+              specialties: s.bio ? s.bio.split(',').map((b: string) => b.trim()) : [],
               workingHours: '08:30 AM - 05:30 PM',
-              status: s.isAvailable ? 'ON_SHIFT' : 'OFF_DUTY',
+              status: (s.dutyStatus as any) || (s.isAvailable ? 'ON_SHIFT' : 'OFF_DUTY'),
               rating: 5.0,
               totalBookingsToday: 0,
             }));

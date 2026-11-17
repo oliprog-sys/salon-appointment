@@ -125,14 +125,24 @@ export class SalonController {
   }
 
   @Patch(':id/staff/:staffId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SALON_OWNER, UserRole.SUPER_ADMIN)
+  @UseGuards(OptionalJwtAuthGuard)
   async updateStaff(
     @Param('id') salonId: string,
     @Param('staffId') staffId: string,
-    @CurrentUser() user: { id: string; role: UserRole },
+    @CurrentUser() user: { id: string; role: UserRole } | null,
     @Body() dto: UpdateStaffDto,
   ) {
     return this.salonService.updateStaff(salonId, staffId, user, dto);
+  }
+
+  @Delete(':id/staff/:staffId')
+  @UseGuards(OptionalJwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteStaff(
+    @Param('id') salonId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser() user: { id: string; role: UserRole } | null,
+  ) {
+    return this.salonService.deleteStaff(salonId, staffId, user);
   }
 }

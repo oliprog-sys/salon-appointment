@@ -157,6 +157,7 @@ model StaffProfile {
   salonId      String
   title        String        // e.g., "Master Stylist", "Senior Barber"
   bio          String?
+  dutyStatus   String        @default("ON_SHIFT")
   isAvailable  Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -231,7 +232,7 @@ model Appointment {
   // Relationships
   customer      User                 @relation("CustomerAppointments", fields: [customerId], references: [id])
   salon         Salon                @relation(fields: [salonId], references: [id])
-  staff         StaffProfile?        @relation(fields: [staffId], references: [id])
+  staff         StaffProfile?        @relation(fields: [staffId], references: [id], onDelete: SetNull)
   services      AppointmentService[]
   payment       Payment?
   review        Review?
