@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Appointment, StaffMember, ServiceOffering, AppointmentStatus } from '../../types';
+import {
+  clearOwnerSession,
+  handleAuthResponse,
+  isSessionExpired,
+  touchOwnerSession,
+} from '@/utils/authSession';
 
 interface CalendarViewProps {
   initialAppointments?: Appointment[];
@@ -183,6 +189,12 @@ export default function CalendarView({
         return;
       }
 
+      if (isSessionExpired()) {
+        clearOwnerSession();
+        window.location.href = '/login?expired=true';
+        return;
+      }
+
       setIsLoadingAppointments(true);
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('aurasalon_owner_token') : null;
@@ -192,6 +204,12 @@ export default function CalendarView({
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           }
         );
+
+        if (!handleAuthResponse(res)) {
+          return;
+        }
+
+        touchOwnerSession();
 
         let dbAppointments: Appointment[] = [];
         if (res.ok) {
@@ -281,8 +299,8 @@ export default function CalendarView({
         knownApptIdsRef.current = new Set(merged.map((a) => a.id));
 
         setAppointments(merged);
-      } catch (err) {
-        console.error('Failed to fetch salon appointments:', err);
+      } catch (err: any) {
+        console.warn('[CalendarView] Backend appointments unreachable:', err?.message || err);
         setAppointments([]);
       } finally {
         setIsLoadingAppointments(false);

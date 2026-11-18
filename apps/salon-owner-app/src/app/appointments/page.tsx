@@ -6,6 +6,12 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import CalendarView from '../../components/appointments/CalendarView';
 import { StaffMember, ServiceOffering } from '../../types';
+import {
+  isSessionExpired,
+  clearOwnerSession,
+  verifyOwnerSession,
+  touchOwnerSession,
+} from '@/utils/authSession';
 
 export default function AppointmentsPage() {
   const router = useRouter();
@@ -60,50 +66,40 @@ export default function AppointmentsPage() {
           setServices(mappedServices);
         }
       }
-    } catch (err) {
-      console.error('Failed to load salon details from backend:', err);
+    } catch (err: any) {
+      console.warn('[AppointmentsPage] Could not connect to backend server:', err?.message || err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('aurasalon_owner_token');
-    const storedUser = localStorage.getItem('aurasalon_owner_user');
-    if (!token || !storedUser) {
-      router.push('/login');
-      return;
-    }
+    async function initAuthAndLoad() {
+      if (isSessionExpired()) {
+        clearOwnerSession();
+        router.push('/login?expired=true');
+        return;
+      }
 
-    // Verify session with backend /auth/me
-    fetch('http://localhost:4000/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json();
-        } else if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem('aurasalon_owner_token');
-          localStorage.removeItem('aurasalon_owner_user');
-          router.push('/login');
-          return null;
-        }
-      })
-      .then((verifiedUser) => {
-        if (verifiedUser) {
-          localStorage.setItem('aurasalon_owner_user', JSON.stringify(verifiedUser));
-        }
-      })
-      .catch(() => {});
+      const verifiedUser = await verifyOwnerSession();
+      if (!verifiedUser) {
+        clearOwnerSession();
+        router.push('/login?expired=true');
+        return;
+      }
 
-    try {
-      const user = JSON.parse(storedUser);
+      touchOwnerSession();
+
       let targetId = localStorage.getItem('aurasalon_active_salon_id');
-      if (!targetId || (user.ownedSalons && !user.ownedSalons.some((s: any) => s.id === targetId))) {
+      if (
+        !targetId ||
+        (verifiedUser.ownedSalons &&
+          !verifiedUser.ownedSalons.some((s: any) => s.id === targetId))
+      ) {
         targetId =
-          user.ownedSalons?.[0]?.id ||
-          user.staffProfile?.salon?.id ||
-          user.staffProfile?.salonId ||
+          verifiedUser.ownedSalons?.[0]?.id ||
+          verifiedUser.staffProfile?.salon?.id ||
+          verifiedUser.staffProfile?.salonId ||
           '';
         if (targetId) localStorage.setItem('aurasalon_active_salon_id', targetId);
       }
@@ -114,12 +110,12 @@ export default function AppointmentsPage() {
       } else {
         setLoading(false);
       }
-    } catch (e) {
-      console.error('Failed to parse user data:', e);
-      setLoading(false);
     }
 
+    initAuthAndLoad();
+
     const onSalonChange = () => {
+      touchOwnerSession();
       const newId = localStorage.getItem('aurasalon_active_salon_id');
       if (newId) {
         setActiveSalonId(newId);
@@ -128,6 +124,7 @@ export default function AppointmentsPage() {
     };
 
     const onStaffChange = () => {
+      touchOwnerSession();
       const currentId = localStorage.getItem('aurasalon_active_salon_id') || activeSalonId;
       if (currentId) {
         loadSalonDetails(currentId);

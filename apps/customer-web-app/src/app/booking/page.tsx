@@ -136,6 +136,7 @@ function BookingForm() {
 
   // Read available promos strictly for this salon from salon storage
   const getAvailablePromos = (): { key: string; promos: PromoCampaign[] } => {
+    if (!targetSalon) return { key: '', promos: [] };
     const primaryKey = `aurasalon_salon_promos_${targetSalon.id}`;
     if (typeof window !== 'undefined') {
       const primaryStored = localStorage.getItem(primaryKey);
@@ -229,6 +230,7 @@ function BookingForm() {
   };
 
   const processBooking = async (overrideToken?: string) => {
+    if (!targetSalon) return;
     setIsSubmitting(true);
     try {
       let code = `AURA-${Math.floor(1000 + Math.random() * 9000)}`;

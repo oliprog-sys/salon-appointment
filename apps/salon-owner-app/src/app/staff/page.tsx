@@ -1,12 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import StaffDirectory from '../../components/staff/StaffDirectory';
 import { StaffMember } from '../../types';
+import {
+  isSessionExpired,
+  clearOwnerSession,
+  verifyOwnerSession,
+  touchOwnerSession,
+} from '@/utils/authSession';
 
 export default function StaffPage() {
+  const router = useRouter();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [activeSalonId, setActiveSalonId] = useState<string>('');
   const [salonName, setSalonName] = useState<string>('');
@@ -14,7 +22,14 @@ export default function StaffPage() {
 
   useEffect(() => {
     const loadStaff = async () => {
+      if (isSessionExpired()) {
+        clearOwnerSession();
+        router.push('/login?expired=true');
+        return;
+      }
+
       try {
+        touchOwnerSession();
         let salonId = localStorage.getItem('aurasalon_active_salon_id');
         if (!salonId) {
           const storedUser = localStorage.getItem('aurasalon_owner_user');
@@ -78,8 +93,8 @@ export default function StaffPage() {
             setStaffList(mapped);
           }
         }
-      } catch (err) {
-        console.error('Failed to load staff:', err);
+      } catch (err: any) {
+        console.warn('[StaffPage] Could not load staff from backend:', err?.message || err);
       } finally {
         setLoading(false);
       }

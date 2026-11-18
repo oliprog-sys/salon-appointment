@@ -93,8 +93,8 @@ export async function fetchAllSalons(): Promise<Salon[]> {
       return rawSalons.map(mapBackendSalonToCustomer);
     }
     return [];
-  } catch (error) {
-    console.error('[salonApi] Could not reach backend API:', error);
+  } catch (error: any) {
+    console.warn('[salonApi] Backend service unreachable (is server on port 4000 running?):', error?.message || error);
     return [];
   }
 }
@@ -108,8 +108,8 @@ export async function fetchSalonBySlug(slug: string): Promise<Salon | null> {
       const data = await res.json();
       return mapBackendSalonToCustomer(data);
     }
-  } catch (error) {
-    console.error(`[salonApi] Failed to fetch salon by slug '${slug}':`, error);
+  } catch (error: any) {
+    console.warn(`[salonApi] Could not reach salon '${slug}':`, error?.message || error);
   }
   return null;
 }
@@ -123,8 +123,8 @@ export async function fetchSalonById(id: string): Promise<Salon | null> {
       const data = await res.json();
       return mapBackendSalonToCustomer(data);
     }
-  } catch (error) {
-    console.error(`[salonApi] Failed to fetch salon by ID '${id}':`, error);
+  } catch (error: any) {
+    console.warn(`[salonApi] Could not reach salon ID '${id}':`, error?.message || error);
   }
   return null;
 }

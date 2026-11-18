@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { EyeIcon, EyeOffIcon } from '@/components/icons/Icons';
+import { saveOwnerSession } from '@/utils/authSession';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isExpired = searchParams.get('expired') === 'true';
 
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -49,21 +52,12 @@ export default function LoginPage() {
         throw new Error('This portal is reserved for Salon Owners and Staff members.');
       }
 
-      // Strictly save backend JWT & user data
-      localStorage.setItem('aurasalon_owner_token', data.accessToken);
-      localStorage.setItem('aurasalon_owner_user', JSON.stringify(data.user));
-
-      const salonStatus =
-        data.user.ownedSalons?.[0]?.status ||
-        data.user.staffProfile?.salon?.status ||
-        data.user.salonStatus ||
-        'APPROVED';
-
-      localStorage.setItem('aurasalon_salon_status', salonStatus);
+      // Strictly save backend JWT, user data, and initialize active session timestamp
+      saveOwnerSession(data.accessToken, data.user);
 
       router.push('/');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Connection to backend server failed.');
+      setErrorMessage(err.message || 'Connection to backend server failed. Please ensure backend is running.');
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +79,14 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-slate-800 py-8 px-6 shadow-2xl rounded-2xl border border-slate-700 sm:px-10 space-y-6">
+          {isExpired && !errorMessage && (
+            <div className="p-3.5 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 text-xs text-center font-medium animate-in fade-in">
+              ℹ️ Your session has expired. Please sign in to resume your salon workspace.
+            </div>
+          )}
+
           {errorMessage && (
-            <div className="p-3.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-xs text-center font-medium">
+            <div className="p-3.5 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-xs text-center font-medium animate-in fade-in">
               ⚠️ {errorMessage}
             </div>
           )}
@@ -122,14 +122,14 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-800 transition cursor-pointer"
                   title={showPassword ? 'Hide password' : 'Show password'}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <EyeOffIcon className="w-4 h-4 text-emerald-600" />
                   ) : (
-                    <EyeIcon className="w-4 h-4" />
+                    <EyeIcon className="w-4 h-4 text-slate-500" />
                   )}
                 </button>
               </div>
@@ -138,21 +138,17 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg transition active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
             >
-              {isLoading ? 'Authenticating...' : 'Sign In to Dashboard →'}
+              {isLoading ? 'Verifying...' : 'Sign In to Workspace →'}
             </button>
           </form>
 
-          {/* Registration Link for New Partners */}
-          <div className="pt-4 border-t border-slate-700/80 text-center">
+          <div className="text-center pt-2 border-t border-slate-700/60">
             <p className="text-xs text-slate-400">
-              Not yet registered with AuraSalon?{' '}
-              <Link
-                href="/register"
-                className="text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2 ml-1"
-              >
-                Sign up as a Partner
+              New Salon Partner?{' '}
+              <Link href="/register" className="text-emerald-400 hover:underline font-bold">
+                Register Your Salon
               </Link>
             </p>
           </div>
@@ -162,3 +158,10 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+      <LoginForm />
+    </Suspense>
+  );
+}

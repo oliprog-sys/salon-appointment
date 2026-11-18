@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { clearOwnerSession } from '@/utils/authSession';
 
 interface UserData {
   id?: string;
@@ -78,10 +79,7 @@ export default function Sidebar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('aurasalon_owner_token');
-    localStorage.removeItem('aurasalon_owner_user');
-    localStorage.removeItem('aurasalon_salon_status');
-    localStorage.removeItem('aurasalon_active_salon_id');
+    clearOwnerSession();
     router.push('/login');
   };
 
