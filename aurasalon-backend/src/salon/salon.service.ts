@@ -8,6 +8,7 @@ import {
 import { SalonStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateSalonDto } from './dto/create-salon.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { ManualOnboardSalonDto } from './dto/manual-onboard-salon.dto';
@@ -19,7 +20,10 @@ import { VerifySalonDto } from './dto/verify-salon.dto';
 
 @Injectable()
 export class SalonService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async createSalon(ownerId: string, dto: CreateSalonDto): Promise<any> {
     const slug = await this.generateUniqueSlug(dto.name);
@@ -39,6 +43,11 @@ export class SalonService {
         gallery: dto.gallery || [],
         status: SalonStatus.PENDING_REVIEW,
         isActive: false,
+        tradeLicenseUrl: dto.tradeLicenseUrl || null,
+        tinNumber: dto.tinNumber || null,
+        kebeleIdUrl: dto.kebeleIdUrl || null,
+        payoutBank: dto.payoutBank || null,
+        payoutAccount: dto.payoutAccount || null,
       },
       include: {
         owner: {
@@ -67,6 +76,9 @@ export class SalonService {
     return {
       salonId: salon.id,
       salonName: salon.name,
+      slug: salon.slug,
+      subCity: salon.subCity,
+      address: salon.address,
       status: salon.status,
       rejectionReason: salon.rejectionReason,
       tradeLicenseUrl: salon.tradeLicenseUrl,
@@ -138,7 +150,7 @@ export class SalonService {
 
     const isApproved = dto.status === SalonStatus.APPROVED;
 
-    return this.prisma.salon.update({
+    const updated = await this.prisma.salon.update({
       where: { id: salonId },
       data: {
         status: dto.status,
@@ -151,6 +163,21 @@ export class SalonService {
         },
       },
     });
+
+    if (updated.owner?.id) {
+      try {
+        await this.notificationService.notifySalonVerification(
+          updated.owner.id,
+          updated.name,
+          dto.status as 'APPROVED' | 'REJECTED',
+          dto.rejectionReason,
+        );
+      } catch (e) {
+        // Notification failure is non-blocking
+      }
+    }
+
+    return updated;
   }
 
   async findAllSalons(query: QuerySalonDto): Promise<{ data: any[]; meta: any }> {
@@ -158,12 +185,19 @@ export class SalonService {
     const limit = query.limit || 50;
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      isActive: true,
-      status: query.status
-        ? (query.status as SalonStatus)
-        : { in: [SalonStatus.APPROVED, SalonStatus.PENDING_REVIEW] },
-    };
+    const where: any = {};
+
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status as SalonStatus;
+    } else if (!query.status) {
+      // Default for customer/public discovery: approved & active only
+      where.status = SalonStatus.APPROVED;
+      where.isActive = true;
+    }
+
+    if (query.isActive !== undefined) {
+      where.isActive = query.isActive;
+    }
 
     if (query.isFeatured !== undefined) {
       where.isFeatured = query.isFeatured;
@@ -192,6 +226,9 @@ export class SalonService {
         take: limit,
         orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
         include: {
+          owner: {
+            select: { id: true, fullName: true, phoneNumber: true, email: true },
+          },
           workingHours: true,
           categories: {
             orderBy: { sortOrder: 'asc' },
@@ -337,6 +374,10 @@ export class SalonService {
       slug = await this.generateUniqueSlug(dto.name, salon.id);
     }
 
+    const isOwnerResubmission =
+      (dto.tradeLicenseUrl || dto.tinNumber || dto.kebeleIdUrl || dto.status === SalonStatus.PENDING_REVIEW) &&
+      salon.status === SalonStatus.REJECTED;
+
     return this.prisma.salon.update({
       where: { id },
       data: {
@@ -349,6 +390,18 @@ export class SalonService {
         ...(dto.longitude !== undefined && { longitude: dto.longitude }),
         ...(dto.coverImageUrl !== undefined && { coverImageUrl: dto.coverImageUrl }),
         ...(dto.gallery && { gallery: dto.gallery }),
+        ...(dto.tradeLicenseUrl !== undefined && { tradeLicenseUrl: dto.tradeLicenseUrl }),
+        ...(dto.tinNumber !== undefined && { tinNumber: dto.tinNumber }),
+        ...(dto.kebeleIdUrl !== undefined && { kebeleIdUrl: dto.kebeleIdUrl }),
+        ...(dto.payoutBank !== undefined && { payoutBank: dto.payoutBank }),
+        ...(dto.payoutAccount !== undefined && { payoutAccount: dto.payoutAccount }),
+        ...(isOwnerResubmission && {
+          status: SalonStatus.PENDING_REVIEW,
+          rejectionReason: null,
+          isActive: false,
+        }),
+        ...(dto.status !== undefined && user.role === UserRole.SUPER_ADMIN && { status: dto.status }),
+        ...(dto.rejectionReason !== undefined && user.role === UserRole.SUPER_ADMIN && { rejectionReason: dto.rejectionReason }),
         ...(dto.isFeatured !== undefined && user.role === UserRole.SUPER_ADMIN && { isFeatured: dto.isFeatured }),
         ...(dto.isActive !== undefined && user.role === UserRole.SUPER_ADMIN && { isActive: dto.isActive }),
       },

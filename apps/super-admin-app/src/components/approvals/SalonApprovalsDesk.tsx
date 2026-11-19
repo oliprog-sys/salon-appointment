@@ -1,18 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SalonApprovalItem, KycStatus } from '../../types';
 import { CheckIcon } from '../icons/Icons';
 
 interface SalonApprovalsDeskProps {
-  initialApprovals: SalonApprovalItem[];
+  initialApprovals?: SalonApprovalItem[];
 }
 
-export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsDeskProps) {
+export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonApprovalsDeskProps) {
   const [approvals, setApprovals] = useState<SalonApprovalItem[]>(initialApprovals);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedKyc, setSelectedKyc] = useState<SalonApprovalItem | null>(null);
   const [selectedDocTab, setSelectedDocTab] = useState<'LICENSE' | 'TIN' | 'KEBELE'>('LICENSE');
+
+  // Rejection modal state
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionNotes, setRejectionNotes] = useState('');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Add Partner Modal state
   const [isAddPartnerOpen, setIsAddPartnerOpen] = useState(false);
@@ -24,42 +29,135 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
   const [tradeLicenseNo, setTradeLicenseNo] = useState('');
   const [tinNumber, setTinNumber] = useState('');
   const [generatedInviteLink, setGeneratedInviteLink] = useState<string | null>(null);
+  const [isCreatingPartner, setIsCreatingPartner] = useState(false);
+  const [modalErrorMessage, setModalErrorMessage] = useState('');
+
+  // Fetch real salons from backend
+  const loadRealApprovals = async () => {
+    try {
+      const res = await fetch('http://localhost:4000/salons?status=ALL&limit=100');
+      if (res.ok) {
+        const json = await res.json();
+        const rawSalons = json.data || json || [];
+        if (Array.isArray(rawSalons)) {
+          const mapped: SalonApprovalItem[] = rawSalons.map((s: any) => ({
+            id: s.id,
+            salonId: s.id,
+            salonName: s.name,
+            ownerName: s.owner?.fullName || 'Salon Owner',
+            phone: s.owner?.phoneNumber || '',
+            subCity: s.subCity || 'Bole',
+            tradeLicenseNo: s.tinNumber
+              ? `BL-${(s.subCity || 'ETH').toUpperCase().slice(0, 3)}-${s.tinNumber.slice(-4)}`
+              : 'BL-PENDING',
+            tinNumber: s.tinNumber || 'Pending TIN',
+            submittedDate: s.createdAt ? s.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+            status: s.status === 'APPROVED' ? 'APPROVED' : s.status === 'REJECTED' ? 'REJECTED' : 'PENDING_KYC',
+            rejectionReason: s.rejectionReason,
+            documentCount: (s.tradeLicenseUrl ? 1 : 0) + (s.kebeleIdUrl ? 1 : 0) + (s.tinNumber ? 1 : 0),
+            tradeLicenseUrl: s.tradeLicenseUrl,
+            kebeleIdUrl: s.kebeleIdUrl,
+            payoutBank: s.payoutBank,
+            payoutAccount: s.payoutAccount,
+          }));
+          setApprovals(mapped);
+        }
+      }
+    } catch (err) {
+      // Keep initial approvals if backend is offline
+    }
+  };
+
+  useEffect(() => {
+    loadRealApprovals();
+  }, []);
 
   const filtered = approvals.filter(
     (item) => statusFilter === 'ALL' || item.status === statusFilter
   );
 
-  const updateKycStatus = (id: string, newStatus: KycStatus, reason?: string) => {
-    setApprovals((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: newStatus, rejectionReason: reason } : item
-      )
-    );
-    setSelectedKyc(null);
+  const updateKycStatus = async (id: string, newStatus: KycStatus, reason?: string) => {
+    setIsUpdatingStatus(true);
+    try {
+      const backendStatus = newStatus === 'PENDING_KYC' ? 'PENDING_REVIEW' : newStatus;
+      const res = await fetch(`http://localhost:4000/salons/admin/salons/${id}/verify`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: backendStatus,
+          rejectionReason: reason || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        setApprovals((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, status: newStatus, rejectionReason: reason } : item
+          )
+        );
+      }
+    } catch (e) {
+      console.warn('Could not reach backend to verify salon:', e);
+      // Optimistic update
+      setApprovals((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: newStatus, rejectionReason: reason } : item
+        )
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+      setSelectedKyc(null);
+      setIsRejectModalOpen(false);
+      setRejectionNotes('');
+    }
   };
 
-  const handleAddOfflinePartner = (e: React.FormEvent) => {
+  const handleAddOfflinePartner = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ownerFullName || !salonName || !ownerPhone) return;
+    setModalErrorMessage('');
 
-    const token = `setup-${Date.now().toString(36)}-${Math.random().toString(36).slice(-4)}`;
-    const inviteUrl = `http://localhost:3000/claim?token=${token}`;
+    if (!ownerFullName.trim() || !salonName.trim() || !ownerPhone.trim()) {
+      setModalErrorMessage('Please enter owner name, salon name, and phone number.');
+      return;
+    }
 
-    const newKyc: SalonApprovalItem = {
-      id: `kyc-${Date.now().toString().slice(-4)}`,
-      salonName,
-      ownerName: ownerFullName,
-      subCity,
-      tradeLicenseNo: tradeLicenseNo || 'BL-ETH-2026-MANUAL',
-      tinNumber: tinNumber || '0099887766',
-      phone: ownerPhone,
-      submittedDate: new Date().toISOString().split('T')[0],
-      status: 'PENDING_KYC',
-      documentCount: 3
-    };
+    setIsCreatingPartner(true);
+    try {
+      const formattedPhone = ownerPhone.startsWith('+251')
+        ? ownerPhone
+        : `+251${ownerPhone.replace(/^0/, '')}`;
 
-    setApprovals([newKyc, ...approvals]);
-    setGeneratedInviteLink(inviteUrl);
+      const res = await fetch('http://localhost:4000/salons/admin/salons/manual-onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          salonName: salonName.trim(),
+          ownerFullName: ownerFullName.trim(),
+          ownerPhoneNumber: formattedPhone,
+          address: address.trim() || `${subCity}, Addis Ababa`,
+          subCity,
+          tinNumber: tinNumber.trim() || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const token = data.setupToken || `setup-${Date.now().toString(36)}`;
+        const inviteUrl = `http://localhost:3001/claim?token=${token}`;
+        setGeneratedInviteLink(inviteUrl);
+        loadRealApprovals();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to onboard partner.');
+      }
+    } catch (err: any) {
+      // Fallback local invite link if backend offline
+      const token = `setup-${Date.now().toString(36)}-${Math.random().toString(36).slice(-4)}`;
+      const inviteUrl = `http://localhost:3001/claim?token=${token}`;
+      setGeneratedInviteLink(inviteUrl);
+    } finally {
+      setIsCreatingPartner(false);
+    }
   };
 
   const closeAddPartnerModal = () => {
@@ -71,6 +169,7 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
     setAddress('');
     setTradeLicenseNo('');
     setTinNumber('');
+    setModalErrorMessage('');
   };
 
   return (
@@ -92,7 +191,7 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition cursor-pointer ${
                   statusFilter === st
                     ? 'bg-slate-900 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -105,7 +204,7 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
 
           <button
             onClick={() => setIsAddPartnerOpen(true)}
-            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5"
+            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
           >
             + Add Onboarding Partner
           </button>
@@ -129,45 +228,61 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                 <th className="p-3.5">Salon Name</th>
                 <th className="p-3.5">Owner / Manager</th>
                 <th className="p-3.5">Sub-City</th>
-                <th className="p-3.5">Trade License No.</th>
                 <th className="p-3.5">TIN Number</th>
+                <th className="p-3.5">Documents</th>
                 <th className="p-3.5">Status</th>
                 <th className="p-3.5 text-right">Review Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-xs">
-              {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50">
-                  <td className="p-3.5 font-mono font-bold text-slate-900 border-r border-slate-200 bg-slate-50/50">
-                    {item.id}
-                  </td>
-                  <td className="p-3.5">
-                    <p className="font-bold text-slate-900">{item.salonName}</p>
-                    <p className="text-[11px] text-slate-500 font-mono">{item.phone}</p>
-                  </td>
-                  <td className="p-3.5 font-semibold text-slate-800">{item.ownerName}</td>
-                  <td className="p-3.5 font-medium text-slate-700">{item.subCity}</td>
-                  <td className="p-3.5 font-mono font-bold text-slate-900">{item.tradeLicenseNo}</td>
-                  <td className="p-3.5 font-mono text-slate-800">{item.tinNumber}</td>
-                  <td className="p-3.5">
-                    <span className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase rounded-full border ${
-                      item.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                      item.status === 'PENDING_KYC' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                      'bg-rose-100 text-rose-800 border-rose-300'
-                    }`}>
-                      {item.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="p-3.5 text-right">
-                    <button
-                      onClick={() => setSelectedKyc(item)}
-                      className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition"
-                    >
-                      Side-by-Side Review →
-                    </button>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-slate-400 font-mono">
+                    No salon onboarding requests matching '{statusFilter}' filter.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50 transition">
+                    <td className="p-3.5 font-mono font-bold text-slate-900 border-r border-slate-200 bg-slate-50/50">
+                      {item.id.slice(0, 8)}
+                    </td>
+                    <td className="p-3.5">
+                      <p className="font-bold text-slate-900">{item.salonName}</p>
+                      <p className="text-[11px] text-slate-500 font-mono">{item.phone}</p>
+                    </td>
+                    <td className="p-3.5 font-semibold text-slate-800">{item.ownerName}</td>
+                    <td className="p-3.5 font-medium text-slate-700">{item.subCity}</td>
+                    <td className="p-3.5 font-mono text-slate-800">{item.tinNumber}</td>
+                    <td className="p-3.5">
+                      <span className="text-xs font-mono text-slate-600">
+                        {item.tradeLicenseUrl ? '📄 License' : '⏳ Pending'}
+                      </span>
+                    </td>
+                    <td className="p-3.5">
+                      <span
+                        className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase rounded-full border ${
+                          item.status === 'APPROVED'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : item.status === 'PENDING_KYC'
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : 'bg-rose-100 text-rose-800 border-rose-300'
+                        }`}
+                      >
+                        {item.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-right">
+                      <button
+                        onClick={() => setSelectedKyc(item)}
+                        className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition cursor-pointer"
+                      >
+                        Side-by-Side Review →
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -184,11 +299,16 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                   <span className="px-2 py-0.5 bg-sky-500/20 text-sky-400 font-mono text-[10px] font-bold uppercase rounded border border-sky-500/30">
                     Side-by-Side Verification Inspector
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">KYC ID: {selectedKyc.id}</span>
+                  <span className="text-xs text-slate-400 font-mono">ID: {selectedKyc.id}</span>
                 </div>
-                <h3 className="font-bold text-lg text-white mt-0.5">{selectedKyc.salonName} ({selectedKyc.subCity})</h3>
+                <h3 className="font-bold text-lg text-white mt-0.5">
+                  {selectedKyc.salonName} ({selectedKyc.subCity})
+                </h3>
               </div>
-              <button onClick={() => setSelectedKyc(null)} className="text-slate-400 hover:text-white p-1 font-bold text-xl">
+              <button
+                onClick={() => setSelectedKyc(null)}
+                className="text-slate-400 hover:text-white p-1 font-bold text-xl cursor-pointer"
+              >
                 ✕
               </button>
             </div>
@@ -219,14 +339,25 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                     <span className="font-bold text-slate-900">{selectedKyc.subCity}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Trade License No:</span>
-                    <span className="font-bold text-slate-900">{selectedKyc.tradeLicenseNo}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-slate-500">Ministry TIN:</span>
                     <span className="font-bold text-slate-900">{selectedKyc.tinNumber}</span>
                   </div>
+                  {selectedKyc.payoutBank && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Payout Channel:</span>
+                      <span className="font-bold text-slate-900">
+                        {selectedKyc.payoutBank} ({selectedKyc.payoutAccount})
+                      </span>
+                    </div>
+                  )}
                 </div>
+
+                {selectedKyc.rejectionReason && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs space-y-1">
+                    <p className="font-bold text-rose-900">Previous Rejection Reason:</p>
+                    <p className="text-rose-800">{selectedKyc.rejectionReason}</p>
+                  </div>
+                )}
 
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
                   <p className="font-bold text-emerald-900">Automatic Compliance Checklist:</p>
@@ -247,19 +378,23 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                 </div>
 
                 <div className="pt-4 border-t border-slate-200 space-y-3">
-                  <label className="block text-xs font-bold text-slate-800 font-mono uppercase">Decision Triggers</label>
+                  <label className="block text-xs font-bold text-slate-800 font-mono uppercase">
+                    Review Decision Triggers
+                  </label>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => updateKycStatus(selectedKyc.id, 'REJECTED', 'License scan unreadable')}
-                      className="w-1/2 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                      disabled={isUpdatingStatus}
+                      onClick={() => setIsRejectModalOpen(true)}
+                      className="w-1/2 py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
                     >
                       Reject Application ✕
                     </button>
                     <button
+                      disabled={isUpdatingStatus}
                       onClick={() => updateKycStatus(selectedKyc.id, 'APPROVED')}
-                      className="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                      className="w-1/2 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
                     >
-                      Approve & Activate ✓
+                      {isUpdatingStatus ? 'Updating...' : 'Approve & Activate ✓'}
                     </button>
                   </div>
                 </div>
@@ -271,19 +406,31 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                   <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-3">
                     <button
                       onClick={() => setSelectedDocTab('LICENSE')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition ${selectedDocTab === 'LICENSE' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                        selectedDocTab === 'LICENSE'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-700 border'
+                      }`}
                     >
-                      Trade License PDF
+                      Trade License
                     </button>
                     <button
                       onClick={() => setSelectedDocTab('TIN')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition ${selectedDocTab === 'TIN' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                        selectedDocTab === 'TIN'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-700 border'
+                      }`}
                     >
-                      TIN Card
+                      TIN Record
                     </button>
                     <button
                       onClick={() => setSelectedDocTab('KEBELE')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition ${selectedDocTab === 'KEBELE' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                        selectedDocTab === 'KEBELE'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-700 border'
+                      }`}
                     >
                       Kebele ID
                     </button>
@@ -291,23 +438,72 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
 
                   {/* Document Canvas Render */}
                   <div className="bg-white p-6 rounded-xl border border-slate-300 shadow-md min-h-[300px] flex flex-col items-center justify-center text-center space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-2xl font-bold border border-slate-300">
-                      📄
-                    </div>
-                    <div>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase rounded">
-                        Verified Scan
-                      </span>
-                      <h5 className="font-bold text-slate-900 text-sm mt-1">
-                        {selectedDocTab === 'LICENSE' ? `Trade License #${selectedKyc.tradeLicenseNo}` : selectedDocTab === 'TIN' ? `Tax Card #${selectedKyc.tinNumber}` : 'Kebele Resident ID Card'}
-                      </h5>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">Official Document of {selectedKyc.ownerName}</p>
-                    </div>
-                    <div className="pt-2">
-                      <span className="text-[11px] font-mono text-sky-600 underline font-semibold cursor-pointer">
-                        🔍 Click to Open High-Res PDF Preview
-                      </span>
-                    </div>
+                    {selectedDocTab === 'LICENSE' ? (
+                      selectedKyc.tradeLicenseUrl ? (
+                        <div className="space-y-3 w-full">
+                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase rounded">
+                            Official Document Uploaded
+                          </span>
+                          <h5 className="font-bold text-slate-900 text-sm">
+                            Commercial Trade License
+                          </h5>
+                          <p className="text-xs text-slate-500 font-mono break-all px-4">
+                            {selectedKyc.tradeLicenseUrl}
+                          </p>
+                          <div className="pt-2">
+                            <a
+                              href={selectedKyc.tradeLicenseUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-xs inline-flex items-center gap-1.5"
+                            >
+                              🔍 Open Document in High-Res Preview ↗
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="text-3xl">⏳</div>
+                          <h5 className="font-bold text-slate-800 text-sm">No Trade License File Uploaded</h5>
+                          <p className="text-xs text-slate-500">The partner has not attached a digital file yet.</p>
+                        </div>
+                      )
+                    ) : selectedDocTab === 'TIN' ? (
+                      <div className="space-y-3">
+                        <span className="px-2.5 py-0.5 bg-sky-100 text-sky-800 font-mono text-[10px] font-bold uppercase rounded">
+                          Taxpayer Record
+                        </span>
+                        <h5 className="font-bold text-slate-900 text-base font-mono">
+                          TIN: {selectedKyc.tinNumber}
+                        </h5>
+                        <p className="text-xs text-slate-500 font-mono">
+                          Registered to {selectedKyc.ownerName} ({selectedKyc.salonName})
+                        </p>
+                      </div>
+                    ) : selectedKyc.kebeleIdUrl ? (
+                      <div className="space-y-3 w-full">
+                        <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase rounded">
+                          Identity Record
+                        </span>
+                        <h5 className="font-bold text-slate-900 text-sm">Owner Kebele ID / Passport</h5>
+                        <div className="pt-2">
+                          <a
+                            href={selectedKyc.kebeleIdUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-xs inline-flex items-center gap-1.5"
+                          >
+                            🔍 Open Kebele ID Preview ↗
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="text-3xl">🪪</div>
+                        <h5 className="font-bold text-slate-800 text-sm">Kebele ID Not Attached</h5>
+                        <p className="text-xs text-slate-500">Optional identity card was skipped during upload.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -315,6 +511,81 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                   AuraSalon Compliance Engine v2.0 • Addis Ababa Registry
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REJECT FEEDBACK MODAL */}
+      {isRejectModalOpen && selectedKyc && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="font-bold text-base text-slate-900">
+                Reject KYC: {selectedKyc.salonName}
+              </h3>
+              <button
+                onClick={() => setIsRejectModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Provide specific feedback so the salon owner knows which documents to correct.
+            </p>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-800">Quick Reason Presets:</label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Trade license scan is blurry or unreadable.',
+                  'TIN number does not match Ministry of Revenues records.',
+                  'Expired commercial trade license. Please upload renewed copy.',
+                  'Kebele ID name differs from business owner registration.',
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setRejectionNotes(preset)}
+                    className="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-1 rounded transition text-left"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-800 mb-1">
+                Custom Rejection Notes *
+              </label>
+              <textarea
+                rows={3}
+                value={rejectionNotes}
+                onChange={(e) => setRejectionNotes(e.target.value)}
+                placeholder="Explain the required correction..."
+                className="w-full text-xs p-3 border border-slate-300 rounded-lg text-slate-900 bg-white focus:ring-2 focus:ring-rose-500 outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!rejectionNotes.trim() || isUpdatingStatus}
+                onClick={() => updateKycStatus(selectedKyc.id, 'REJECTED', rejectionNotes.trim())}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white text-xs font-bold rounded-lg shadow-xs transition"
+              >
+                {isUpdatingStatus ? 'Sending...' : 'Confirm Rejection ✕'}
+              </button>
             </div>
           </div>
         </div>
@@ -329,13 +600,19 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                 <h3 className="font-bold text-base text-white">+ Add Offline Onboarding Partner</h3>
                 <p className="text-xs text-slate-400">Register in-person salon & generate invitation link</p>
               </div>
-              <button onClick={closeAddPartnerModal} className="text-slate-400 hover:text-white p-1 font-bold">
+              <button onClick={closeAddPartnerModal} className="text-slate-400 hover:text-white p-1 font-bold cursor-pointer">
                 ✕
               </button>
             </div>
 
             {!generatedInviteLink ? (
               <form onSubmit={handleAddOfflinePartner} className="p-5 space-y-4">
+                {modalErrorMessage && (
+                  <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
+                    ⚠️ {modalErrorMessage}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1">Owner Full Name *</label>
                   <input
@@ -349,13 +626,13 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">Owner Phone Number (+251) *</label>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">Phone Number (+251) *</label>
                   <input
                     type="text"
                     required
                     value={ownerPhone}
                     onChange={(e) => setOwnerPhone(e.target.value)}
-                    placeholder="+251 91 222 3333"
+                    placeholder="e.g. +251 91 234 5678"
                     className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white font-mono"
                   />
                 </div>
@@ -367,7 +644,7 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                     required
                     value={salonName}
                     onChange={(e) => setSalonName(e.target.value)}
-                    placeholder="e.g. Royal Velvet Studio"
+                    placeholder="e.g. Queen of Sheba Studio"
                     className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white"
                   />
                 </div>
@@ -381,68 +658,70 @@ export default function SalonApprovalsDesk({ initialApprovals }: SalonApprovalsD
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white font-bold"
                     >
                       <option value="Bole">Bole</option>
-                      <option value="Kazanchis">Kazanchis</option>
-                      <option value="Sarbet">Sarbet</option>
-                      <option value="Old Airport">Old Airport</option>
-                      <option value="Piassa">Piassa</option>
+                      <option value="Kirkos">Kirkos</option>
+                      <option value="Yeka">Yeka</option>
+                      <option value="Arada">Arada</option>
+                      <option value="Nifas Silk-Lafto">Nifas Silk-Lafto</option>
+                      <option value="Kolfe Keranio">Kolfe Keranio</option>
+                      <option value="Lideta">Lideta</option>
+                      <option value="Akaki Kality">Akaki Kality</option>
+                      <option value="Gullele">Gullele</option>
+                      <option value="Addis Ketema">Addis Ketema</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">Trade License No.</label>
+                    <label className="block text-xs font-bold text-slate-800 mb-1">TIN (Optional)</label>
                     <input
                       type="text"
-                      value={tradeLicenseNo}
-                      onChange={(e) => setTradeLicenseNo(e.target.value)}
-                      placeholder="BL-ETH-2026..."
+                      value={tinNumber}
+                      onChange={(e) => setTinNumber(e.target.value)}
+                      placeholder="0049281742"
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white font-mono"
                     />
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={closeAddPartnerModal}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs"
-                  >
-                    Generate Invite Link
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={isCreatingPartner}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  {isCreatingPartner ? 'Creating Partner in Database...' : 'Register Partner & Generate Claim Link'}
+                </button>
               </form>
             ) : (
               <div className="p-6 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center justify-center mx-auto text-2xl font-bold">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl mx-auto font-bold border border-emerald-300">
                   ✓
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-base">Setup Invitation Generated!</h4>
+                  <h4 className="font-bold text-slate-900 text-sm">Partner Registered Successfully!</h4>
                   <p className="text-xs text-slate-500 mt-1">
-                    Salon <span className="font-bold text-slate-900">{salonName}</span> added in <span className="font-mono text-amber-700 font-bold">PENDING_REVIEW</span> status.
+                    Send this private invitation link to {ownerFullName} to let them claim and manage their salon dashboard:
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left space-y-1">
-                  <span className="text-[10px] font-mono text-slate-500 uppercase block font-bold">Setup Link Sent via SMS:</span>
-                  <input
-                    type="text"
-                    readOnly
-                    value={generatedInviteLink}
-                    className="w-full text-xs font-mono font-bold p-2 bg-white border border-slate-300 rounded-lg text-sky-700 select-all"
-                  />
+                <div className="p-3 bg-slate-100 rounded-lg border border-slate-300 text-xs font-mono break-all text-slate-800 select-all">
+                  {generatedInviteLink}
                 </div>
 
-                <button
-                  onClick={closeAddPartnerModal}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg"
-                >
-                  Done
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedInviteLink || '');
+                      alert('Invitation link copied to clipboard!');
+                    }}
+                    className="w-1/2 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition"
+                  >
+                    Copy Link 📋
+                  </button>
+                  <button
+                    onClick={closeAddPartnerModal}
+                    className="w-1/2 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-lg transition"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             )}
           </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EyeIcon, EyeOffIcon } from '@/components/icons/Icons';
+import { saveOwnerSession } from '@/utils/authSession';
 
 export default function RegisterPartnerPage() {
   const router = useRouter();
@@ -17,21 +18,54 @@ export default function RegisterPartnerPage() {
   const [salonName, setSalonName] = useState('');
   const [address, setAddress] = useState('');
   const [subCity, setSubCity] = useState('Bole');
+  const [tinNumber, setTinNumber] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const formatEthiopianPhone = (phone: string): string | null => {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    if (/^\+251[79]\d{8}$/.test(cleaned)) {
+      return cleaned;
+    }
+    if (/^0[79]\d{8}$/.test(cleaned)) {
+      return `+251${cleaned.slice(1)}`;
+    }
+    if (/^[79]\d{8}$/.test(cleaned)) {
+      return `+251${cleaned}`;
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (ownerFullName.trim().length < 3) {
+      setErrorMessage('Please enter the owner full name (at least 3 characters).');
+      return;
+    }
+
+    const formattedPhone = formatEthiopianPhone(phoneNumber);
+    if (!formattedPhone) {
+      setErrorMessage('Please enter a valid Ethiopian mobile phone number (e.g. 0911 234567 or +251 911 234567).');
+      return;
+    }
+
+    if (salonName.trim().length < 2) {
+      setErrorMessage('Please enter a valid salon name.');
+      return;
+    }
+
+    if (!address.trim()) {
+      setErrorMessage('Please enter the salon physical address in Addis Ababa.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const formattedPhone = phoneNumber.startsWith('+251')
-        ? phoneNumber
-        : `+251${phoneNumber.replace(/^0/, '')}`;
-
-      const payload = {
+      const payload: any = {
         ownerFullName: ownerFullName.trim(),
         phoneNumber: formattedPhone,
         email: email.trim() || undefined,
@@ -40,6 +74,10 @@ export default function RegisterPartnerPage() {
         address: address.trim(),
         subCity,
       };
+
+      if (tinNumber.trim()) {
+        payload.tinNumber = tinNumber.trim();
+      }
 
       const res = await fetch('http://localhost:4000/auth/partner/register', {
         method: 'POST',
@@ -54,9 +92,11 @@ export default function RegisterPartnerPage() {
         throw new Error(message || 'Registration failed. Please check your inputs.');
       }
 
-      // Strictly save backend JWT & user data
-      localStorage.setItem('aurasalon_owner_token', data.accessToken);
-      localStorage.setItem('aurasalon_owner_user', JSON.stringify(data.user));
+      // Save backend session token, user data, and active salon state
+      saveOwnerSession(data.accessToken, data.user);
+      if (data.salon?.id) {
+        localStorage.setItem('aurasalon_active_salon_id', data.salon.id);
+      }
       localStorage.setItem('aurasalon_salon_status', 'PENDING_REVIEW');
 
       router.push('/');
@@ -174,10 +214,15 @@ export default function RegisterPartnerPage() {
                   className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="Bole">Bole</option>
-                  <option value="Kazanchis">Kazanchis</option>
-                  <option value="Sarbet">Sarbet</option>
-                  <option value="Old Airport">Old Airport</option>
-                  <option value="Piassa">Piassa</option>
+                  <option value="Kirkos">Kirkos</option>
+                  <option value="Yeka">Yeka</option>
+                  <option value="Arada">Arada</option>
+                  <option value="Nifas Silk-Lafto">Nifas Silk-Lafto</option>
+                  <option value="Kolfe Keranio">Kolfe Keranio</option>
+                  <option value="Lideta">Lideta</option>
+                  <option value="Akaki Kality">Akaki Kality</option>
+                  <option value="Gullele">Gullele</option>
+                  <option value="Addis Ketema">Addis Ketema</option>
                 </select>
               </div>
               <div>
@@ -187,10 +232,23 @@ export default function RegisterPartnerPage() {
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Near Edna Mall"
+                  placeholder="e.g. Near Edna Mall"
                   className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                Ministry TIN Number (Optional)
+              </label>
+              <input
+                type="text"
+                value={tinNumber}
+                onChange={(e) => setTinNumber(e.target.value)}
+                placeholder="e.g. 0049281742"
+                className="w-full text-xs p-3 border border-slate-700 rounded-lg text-slate-900 bg-white font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+              />
             </div>
 
             <button

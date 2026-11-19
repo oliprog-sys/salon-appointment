@@ -153,6 +153,22 @@ export class NotificationService {
     }
   }
 
+  async notifySalonVerification(
+    ownerId: string,
+    salonName: string,
+    status: 'APPROVED' | 'REJECTED',
+    rejectionReason?: string,
+  ): Promise<void> {
+    const isApproved = status === 'APPROVED';
+    const title = isApproved ? 'Salon Verified & Approved! 🎉' : 'KYC Document Update Required ⚠️';
+    const body = isApproved
+      ? `Congratulations! Your salon "${salonName}" has been verified and approved by AuraSalon HQ. Your live schedule and floor management suite are now unlocked.`
+      : `Your KYC submission for "${salonName}" was reviewed: ${rejectionReason || 'Please resubmit updated trade license or TIN documentation.'}`;
+    const data = { type: isApproved ? 'SALON_APPROVED' : 'SALON_REJECTED', status, rejectionReason };
+
+    await this.sendNotificationToUser(ownerId, title, body, data);
+  }
+
   private async sendNotificationToUser(userId: string, title: string, body: string, data?: any): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import CalendarView from '../components/appointments/CalendarView';
 import OnboardingStepForm from '../components/onboarding/OnboardingStepForm';
 import KycResubmission from '../components/onboarding/KycResubmission';
+import InitialSetupWizard from '../components/onboarding/InitialSetupWizard';
 import { StaffMember, ServiceOffering } from '../types';
 import {
   isSessionExpired,
@@ -23,6 +24,8 @@ export default function DashboardPage() {
   const [activeSalonId, setActiveSalonId] = useState<string>('');
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [services, setServices] = useState<ServiceOffering[]>([]);
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [hasWorkingHours, setHasWorkingHours] = useState<boolean>(false);
 
   const loadSalonDetails = useCallback(async (salonId: string) => {
     if (!salonId) return;
@@ -67,6 +70,14 @@ export default function DashboardPage() {
         if (salon.status) {
           setSalonStatus(salon.status);
           localStorage.setItem('aurasalon_salon_status', salon.status);
+        }
+        if (salon.rejectionReason) {
+          setRejectionReason(salon.rejectionReason);
+        }
+        if (Array.isArray(salon.workingHours) && salon.workingHours.length > 0) {
+          setHasWorkingHours(true);
+        } else {
+          setHasWorkingHours(false);
         }
 
         // Map real staff profiles belonging to this specific salon
@@ -190,28 +201,48 @@ export default function DashboardPage() {
           }
           subtitle="Vendor Management Suite for Addis Ababa"
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {salonStatus === 'APPROVED' && (
-            <CalendarView
-              staffList={staffList}
-              services={services}
-              salonId={activeSalonId}
-            />
+            <>
+              <InitialSetupWizard
+                salonId={activeSalonId}
+                salonName={salonName}
+                hasWorkingHours={hasWorkingHours}
+                hasServices={services.length > 0}
+                hasStaff={staffList.length > 0}
+                onRefreshSalon={() => loadSalonDetails(activeSalonId)}
+              />
+              <CalendarView
+                staffList={staffList}
+                services={services}
+                salonId={activeSalonId}
+              />
+            </>
           )}
 
           {salonStatus === 'PENDING_REVIEW' && (
             <OnboardingStepForm
+              salonId={activeSalonId}
               salonName={salonName}
               subCity={subCity}
-              onStatusChange={(status) => setSalonStatus(status)}
+              onStatusChange={(status) => {
+                setSalonStatus(status);
+                if (status === 'APPROVED' && activeSalonId) {
+                  loadSalonDetails(activeSalonId);
+                }
+              }}
             />
           )}
 
           {salonStatus === 'REJECTED' && (
             <KycResubmission
+              salonId={activeSalonId}
               salonName={salonName}
-              rejectionReason="Trade License scan is blurry. Please upload a clear digital PDF showing the Ministry seal."
-              onResubmitSuccess={() => setSalonStatus('PENDING_REVIEW')}
+              rejectionReason={rejectionReason || "Trade License copy is incomplete or unreadable. Please upload a clear digital PDF."}
+              onResubmitSuccess={() => {
+                setSalonStatus('PENDING_REVIEW');
+                if (activeSalonId) loadSalonDetails(activeSalonId);
+              }}
             />
           )}
         </main>

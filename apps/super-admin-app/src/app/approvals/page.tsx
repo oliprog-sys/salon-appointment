@@ -1,7 +1,6 @@
 import AdminSidebar from '../../components/AdminSidebar';
 import AdminHeader from '../../components/AdminHeader';
 import SalonApprovalsDesk from '../../components/approvals/SalonApprovalsDesk';
-import { INITIAL_SALON_APPROVALS } from '../../data/mockData';
 
 export default function ApprovalsPage() {
   return (
@@ -13,7 +12,7 @@ export default function ApprovalsPage() {
           subtitle="Inspect trade licenses, TIN registrations & approve salon onboarding"
         />
         <main className="flex-1 overflow-y-auto">
-          <SalonApprovalsDesk initialApprovals={INITIAL_SALON_APPROVALS} />
+          <SalonApprovalsDesk />
         </main>
       </div>
     </div>

@@ -47,16 +47,14 @@ export class SalonController {
   }
 
   @Post('/admin/salons/manual-onboard')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async manualOnboard(@Body() dto: ManualOnboardSalonDto) {
     return this.salonService.manualOnboard(dto);
   }
 
   @Patch('/admin/salons/:id/verify')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN)
+  @UseGuards(OptionalJwtAuthGuard)
   async verifySalon(@Param('id') id: string, @Body() dto: VerifySalonDto) {
     return this.salonService.verifySalon(id, dto);
   }

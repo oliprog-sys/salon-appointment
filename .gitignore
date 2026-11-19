@@ -47,6 +47,10 @@ yarn-debug.log*
 yarn-error.log*
 .eslintcache
 
+# Uploads & Temporary Media
+uploads/
+aurasalon-backend/uploads/
+
 # Private AI Agent Skills & Design Configs
 .agents/
 designs/

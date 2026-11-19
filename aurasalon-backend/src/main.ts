@@ -2,6 +2,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as express from 'express';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
+
+// Load .env reliably regardless of working directory
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(process.cwd(), 'aurasalon-backend', '.env') });
+dotenv.config();
+
 import { AppModule, ObserveInstrument } from './app.module';
 
 async function bootstrap() {

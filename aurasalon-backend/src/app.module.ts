@@ -32,6 +32,7 @@ const observeModules =
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['aurasalon-backend/.env', '.env'],
     }),
     ...observeModules,
     PrismaModule,

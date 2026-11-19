@@ -5,7 +5,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/aurasalon?schema=public';
+    const connectionString =
+      process.env.DATABASE_URL ||
+      'postgresql://aurasalon_user:aurasalon_password@localhost:5433/aurasalon_db?schema=public';
     const adapter = new PrismaPg({ connectionString });
     super({ adapter });
   }

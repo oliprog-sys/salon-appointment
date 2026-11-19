@@ -37,4 +37,24 @@ export class CreateSalonDto {
   @IsArray()
   @IsString({ each: true })
   gallery?: string[];
+
+  @IsOptional()
+  @IsString()
+  tradeLicenseUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  tinNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  kebeleIdUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  payoutBank?: string;
+
+  @IsOptional()
+  @IsString()
+  payoutAccount?: string;
 }

@@ -39,10 +39,14 @@ export default function Sidebar() {
 
   const [user, setUser] = useState<UserData | null>(null);
   const [activeSalonId, setActiveSalonId] = useState<string>('');
+  const [salonStatus, setSalonStatus] = useState<string>('APPROVED');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const status = localStorage.getItem('aurasalon_salon_status') || 'APPROVED';
+    setSalonStatus(status);
+
     const storedUser = localStorage.getItem('aurasalon_owner_user');
     if (storedUser) {
       try {
@@ -253,9 +257,21 @@ export default function Sidebar() {
                   </p>
                 </div>
               </div>
-              <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
-                {user?.role === 'STAFF' ? 'Staff' : 'Owner'}
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {salonStatus === 'PENDING_REVIEW' && (
+                  <span className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/80">
+                    Pending
+                  </span>
+                )}
+                {salonStatus === 'REJECTED' && (
+                  <span className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700/80">
+                    Rejected
+                  </span>
+                )}
+                <span className="text-[10px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                  {user?.role === 'STAFF' ? 'Staff' : 'Owner'}
+                </span>
+              </div>
             </div>
           )}
         </div>

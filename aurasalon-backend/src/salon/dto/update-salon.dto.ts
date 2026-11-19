@@ -1,4 +1,5 @@
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, IsUrl } from 'class-validator';
+import { SalonStatus } from '@prisma/client';
 
 export class UpdateSalonDto {
   @IsOptional()
@@ -45,4 +46,32 @@ export class UpdateSalonDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  tradeLicenseUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  tinNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  kebeleIdUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  payoutBank?: string;
+
+  @IsOptional()
+  @IsString()
+  payoutAccount?: string;
+
+  @IsOptional()
+  @IsEnum(SalonStatus)
+  status?: SalonStatus;
+
+  @IsOptional()
+  @IsString()
+  rejectionReason?: string;
 }

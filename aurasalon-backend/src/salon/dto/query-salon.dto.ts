@@ -21,6 +21,15 @@ export class QuerySalonDto {
     if (value === 'false') return false;
     return value;
   })
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   isFeatured?: boolean;
 
   @IsOptional()

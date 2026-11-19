@@ -2,6 +2,7 @@ export type KycStatus = 'PENDING_KYC' | 'APPROVED' | 'REJECTED';
 
 export interface SalonApprovalItem {
   id: string;
+  salonId?: string;
   salonName: string;
   ownerName: string;
   subCity: string; // e.g. "Bole", "Kazanchis", "Sarbet", "Old Airport", "Piassa"
@@ -12,6 +13,10 @@ export interface SalonApprovalItem {
   status: KycStatus;
   rejectionReason?: string;
   documentCount: number;
+  tradeLicenseUrl?: string;
+  kebeleIdUrl?: string;
+  payoutBank?: string;
+  payoutAccount?: string;
 }
 
 export type PayoutStatus = 'PAID' | 'PENDING_PAYOUT' | 'PROCESSING';
