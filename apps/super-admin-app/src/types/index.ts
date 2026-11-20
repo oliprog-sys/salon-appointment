@@ -13,6 +13,7 @@ export interface SalonApprovalItem {
   status: KycStatus;
   rejectionReason?: string;
   documentCount: number;
+  idType?: string;
   tradeLicenseUrl?: string;
   kebeleIdUrl?: string;
   payoutBank?: string;

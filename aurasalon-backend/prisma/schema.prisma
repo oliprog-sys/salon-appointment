@@ -119,6 +119,7 @@ model Salon {
   tradeLicenseUrl String?
   tinNumber       String?
   kebeleIdUrl     String?
+  idType          String?        @default("TRADE_LICENSE") // "TRADE_LICENSE", "KEBELE_ID", "NATIONAL_ID", "PASSPORT"
   payoutBank      String?
   payoutAccount   String?
   setupToken      String?        @unique

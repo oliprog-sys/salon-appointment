@@ -61,6 +61,10 @@ export class UpdateSalonDto {
 
   @IsOptional()
   @IsString()
+  idType?: string;
+
+  @IsOptional()
+  @IsString()
   payoutBank?: string;
 
   @IsOptional()

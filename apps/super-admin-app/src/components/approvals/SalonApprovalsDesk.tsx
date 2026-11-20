@@ -55,6 +55,7 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
             status: s.status === 'APPROVED' ? 'APPROVED' : s.status === 'REJECTED' ? 'REJECTED' : 'PENDING_KYC',
             rejectionReason: s.rejectionReason,
             documentCount: (s.tradeLicenseUrl ? 1 : 0) + (s.kebeleIdUrl ? 1 : 0) + (s.tinNumber ? 1 : 0),
+            idType: s.idType || (s.tradeLicenseUrl ? 'TRADE_LICENSE' : 'KEBELE_ID'),
             tradeLicenseUrl: s.tradeLicenseUrl,
             kebeleIdUrl: s.kebeleIdUrl,
             payoutBank: s.payoutBank,
@@ -228,8 +229,9 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                 <th className="p-3.5">Salon Name</th>
                 <th className="p-3.5">Owner / Manager</th>
                 <th className="p-3.5">Sub-City</th>
-                <th className="p-3.5">TIN Number</th>
-                <th className="p-3.5">Documents</th>
+                <th className="p-3.5">Verification Tier</th>
+                <th className="p-3.5">TIN / ID #</th>
+                <th className="p-3.5">Attached Docs</th>
                 <th className="p-3.5">Status</th>
                 <th className="p-3.5 text-right">Review Action</th>
               </tr>
@@ -237,7 +239,7 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
             <tbody className="divide-y divide-slate-200 text-xs">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 font-mono">
+                  <td colSpan={9} className="p-8 text-center text-slate-400 font-mono">
                     No salon onboarding requests matching '{statusFilter}' filter.
                   </td>
                 </tr>
@@ -253,10 +255,21 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                     </td>
                     <td className="p-3.5 font-semibold text-slate-800">{item.ownerName}</td>
                     <td className="p-3.5 font-medium text-slate-700">{item.subCity}</td>
+                    <td className="p-3.5">
+                      {item.idType === 'TRADE_LICENSE' || item.tradeLicenseUrl ? (
+                        <span className="px-2 py-0.5 text-[10px] font-bold font-mono bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                          🏢 Commercial
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[10px] font-bold font-mono bg-amber-50 text-amber-700 border border-amber-200 rounded-md">
+                          👤 {item.idType ? item.idType.replace('_', ' ') : 'Sole Proprietor'}
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3.5 font-mono text-slate-800">{item.tinNumber}</td>
                     <td className="p-3.5">
                       <span className="text-xs font-mono text-slate-600">
-                        {item.tradeLicenseUrl ? '📄 License' : '⏳ Pending'}
+                        {item.tradeLicenseUrl ? '📄 Trade License' : item.kebeleIdUrl ? `🪪 Gov ID (${item.idType ? item.idType.replace('_', ' ') : 'Kebele'})` : '⏳ Pending'}
                       </span>
                     </td>
                     <td className="p-3.5">
@@ -274,7 +287,16 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                     </td>
                     <td className="p-3.5 text-right">
                       <button
-                        onClick={() => setSelectedKyc(item)}
+                        onClick={() => {
+                          setSelectedKyc(item);
+                          if (item.tradeLicenseUrl) {
+                            setSelectedDocTab('LICENSE');
+                          } else if (item.kebeleIdUrl) {
+                            setSelectedDocTab('KEBELE');
+                          } else {
+                            setSelectedDocTab('TIN');
+                          }
+                        }}
                         className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition cursor-pointer"
                       >
                         Side-by-Side Review →
@@ -339,7 +361,19 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                     <span className="font-bold text-slate-900">{selectedKyc.subCity}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Ministry TIN:</span>
+                    <span className="text-slate-500">Verification Tier:</span>
+                    <span className="font-bold text-slate-900">
+                      {selectedKyc.idType === 'TRADE_LICENSE' || selectedKyc.tradeLicenseUrl
+                        ? '🏢 Commercial (Trade License)'
+                        : `👤 Sole Proprietor (${selectedKyc.idType ? selectedKyc.idType.replace('_', ' ') : 'Gov ID'})`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">
+                      {selectedKyc.idType === 'TRADE_LICENSE' || selectedKyc.tradeLicenseUrl
+                        ? 'Ministry TIN:'
+                        : 'Gov ID / Card #:'}
+                    </span>
                     <span className="font-bold text-slate-900">{selectedKyc.tinNumber}</span>
                   </div>
                   {selectedKyc.payoutBank && (
@@ -432,7 +466,9 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                           : 'bg-white text-slate-700 border'
                       }`}
                     >
-                      Kebele ID
+                      {selectedKyc.idType && selectedKyc.idType !== 'TRADE_LICENSE'
+                        ? selectedKyc.idType.replace('_', ' ')
+                        : 'Government ID'}
                     </button>
                   </div>
 
@@ -465,16 +501,22 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                         <div className="space-y-2">
                           <div className="text-3xl">⏳</div>
                           <h5 className="font-bold text-slate-800 text-sm">No Trade License File Uploaded</h5>
-                          <p className="text-xs text-slate-500">The partner has not attached a digital file yet.</p>
+                          <p className="text-xs text-slate-500">
+                            {selectedKyc.idType && selectedKyc.idType !== 'TRADE_LICENSE'
+                              ? 'Registered as Sole Proprietor under Government ID verification.'
+                              : 'The partner has not attached a digital trade license file yet.'}
+                          </p>
                         </div>
                       )
                     ) : selectedDocTab === 'TIN' ? (
                       <div className="space-y-3">
                         <span className="px-2.5 py-0.5 bg-sky-100 text-sky-800 font-mono text-[10px] font-bold uppercase rounded">
-                          Taxpayer Record
+                          Taxpayer / ID Record
                         </span>
                         <h5 className="font-bold text-slate-900 text-base font-mono">
-                          TIN: {selectedKyc.tinNumber}
+                          {selectedKyc.idType === 'TRADE_LICENSE' || selectedKyc.tradeLicenseUrl
+                            ? `TIN: ${selectedKyc.tinNumber}`
+                            : `ID #: ${selectedKyc.tinNumber}`}
                         </h5>
                         <p className="text-xs text-slate-500 font-mono">
                           Registered to {selectedKyc.ownerName} ({selectedKyc.salonName})
@@ -483,9 +525,14 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                     ) : selectedKyc.kebeleIdUrl ? (
                       <div className="space-y-3 w-full">
                         <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold uppercase rounded">
-                          Identity Record
+                          Official Government ID Uploaded
                         </span>
-                        <h5 className="font-bold text-slate-900 text-sm">Owner Kebele ID / Passport</h5>
+                        <h5 className="font-bold text-slate-900 text-sm">
+                          Owner Government ID ({selectedKyc.idType ? selectedKyc.idType.replace('_', ' ') : 'Kebele ID'})
+                        </h5>
+                        <p className="text-xs text-slate-500 font-mono break-all px-4">
+                          {selectedKyc.kebeleIdUrl}
+                        </p>
                         <div className="pt-2">
                           <a
                             href={selectedKyc.kebeleIdUrl}
@@ -493,15 +540,15 @@ export default function SalonApprovalsDesk({ initialApprovals = [] }: SalonAppro
                             rel="noopener noreferrer"
                             className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-xs inline-flex items-center gap-1.5"
                           >
-                            🔍 Open Kebele ID Preview ↗
+                            🔍 Open Government ID Preview ↗
                           </a>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="text-3xl">🪪</div>
-                        <h5 className="font-bold text-slate-800 text-sm">Kebele ID Not Attached</h5>
-                        <p className="text-xs text-slate-500">Optional identity card was skipped during upload.</p>
+                        <h5 className="font-bold text-slate-800 text-sm">Government ID Not Attached</h5>
+                        <p className="text-xs text-slate-500">Government ID document was skipped during registration.</p>
                       </div>
                     )}
                   </div>

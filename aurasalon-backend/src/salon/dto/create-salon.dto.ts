@@ -52,6 +52,10 @@ export class CreateSalonDto {
 
   @IsOptional()
   @IsString()
+  idType?: string;
+
+  @IsOptional()
+  @IsString()
   payoutBank?: string;
 
   @IsOptional()

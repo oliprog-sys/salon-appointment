@@ -9,6 +9,7 @@ interface KycFileUploadProps {
   value?: string;
   onChange: (url: string, fileMeta?: { name: string; size: number }) => void;
   acceptedFormats?: string;
+  darkMode?: boolean;
 }
 
 export default function KycFileUpload({
@@ -18,6 +19,7 @@ export default function KycFileUpload({
   value,
   onChange,
   acceptedFormats = '.pdf,.jpg,.jpeg,.png',
+  darkMode = false,
 }: KycFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -94,19 +96,27 @@ export default function KycFileUpload({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="block text-xs font-bold text-slate-800">
+        <label className={`block text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
-        {description && <span className="text-[11px] text-slate-500">{description}</span>}
+        {description && (
+          <span className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            {description}
+          </span>
+        )}
       </div>
 
       {errorMessage && (
-        <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between">
+        <div className={`p-2.5 rounded-lg text-xs flex items-center justify-between ${
+          darkMode
+            ? 'bg-rose-950/40 border border-rose-800/60 text-rose-300'
+            : 'bg-rose-50 border border-rose-200 text-rose-700'
+        }`}>
           <span>⚠️ {errorMessage}</span>
           <button
             type="button"
             onClick={() => setErrorMessage('')}
-            className="text-rose-500 hover:text-rose-700 font-bold ml-2"
+            className="text-rose-400 hover:text-rose-200 font-bold ml-2"
           >
             ✕
           </button>
@@ -114,35 +124,39 @@ export default function KycFileUpload({
       )}
 
       {value ? (
-        <div className="p-3.5 bg-slate-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-3">
+        <div className={`p-3.5 rounded-xl flex items-center justify-between gap-3 border ${
+          darkMode
+            ? 'bg-slate-900/90 border-emerald-500/50 text-slate-100 shadow-inner'
+            : 'bg-slate-50 border-emerald-300 text-slate-900'
+        }`}>
           <div className="flex items-center gap-3 min-w-0">
             {isPdf ? (
-              <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm shrink-0 border border-rose-200">
+              <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center font-bold text-sm shrink-0 border border-rose-500/30">
                 PDF
               </div>
             ) : isImage ? (
-              <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-300 shrink-0 relative bg-slate-200">
+              <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-700 shrink-0 relative bg-slate-800">
                 <img src={value} alt="KYC Document Preview" className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0 border border-emerald-200">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0 border border-emerald-500/30">
                 DOC
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-900 truncate">
+              <p className={`text-xs font-bold truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                 {fileName || (value.split('/').pop() || 'Verified Document')}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.2 rounded">
+                <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-800/50 px-1.5 py-0.2 rounded">
                   ✓ Uploaded
                 </span>
-                {fileSize && <span className="text-[10px] text-slate-400 font-mono">{fileSize}</span>}
+                {fileSize && <span className={`text-[10px] font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{fileSize}</span>}
                 <a
                   href={value}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] font-bold text-sky-600 hover:text-sky-800 hover:underline"
+                  className="text-[11px] font-bold text-sky-400 hover:text-sky-300 hover:underline"
                 >
                   View Preview ↗
                 </a>
@@ -153,7 +167,11 @@ export default function KycFileUpload({
           <button
             type="button"
             onClick={handleClear}
-            className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition font-medium shrink-0"
+            className={`px-2.5 py-1 text-xs rounded-lg transition font-medium shrink-0 border ${
+              darkMode
+                ? 'text-rose-300 hover:bg-rose-950/50 border-rose-800/60'
+                : 'text-rose-600 hover:bg-rose-50 border-rose-200'
+            }`}
           >
             Replace
           </button>
@@ -165,7 +183,11 @@ export default function KycFileUpload({
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition ${
             isUploading
-              ? 'border-emerald-400 bg-emerald-50/50'
+              ? darkMode
+                ? 'border-emerald-500/60 bg-emerald-950/20'
+                : 'border-emerald-400 bg-emerald-50/50'
+              : darkMode
+              ? 'border-slate-700 hover:border-emerald-400/80 bg-slate-900/60 hover:bg-slate-800/60'
               : 'border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-slate-50'
           }`}
         >
@@ -183,19 +205,21 @@ export default function KycFileUpload({
 
           {isUploading ? (
             <div className="flex flex-col items-center justify-center space-y-2 py-1">
-              <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-bold text-emerald-800">Uploading and validating document...</p>
-              <p className="text-[10px] text-slate-400 font-mono">Storing secure copy on server</p>
+              <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              <p className={`text-xs font-bold ${darkMode ? 'text-emerald-300' : 'text-emerald-800'}`}>Uploading and validating document...</p>
+              <p className={`text-[10px] font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Storing secure copy on server</p>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center space-y-1.5 py-1">
-              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                darkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-200 text-slate-600'
+              }`}>
                 📁
               </div>
-              <p className="text-xs font-bold text-slate-800">
+              <p className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                 Click to browse or drag & drop document
               </p>
-              <p className="text-[11px] text-slate-500 font-mono">
+              <p className={`text-[11px] font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Accepted: PDF, PNG, JPG (Maximum 10 MB)
               </p>
             </div>

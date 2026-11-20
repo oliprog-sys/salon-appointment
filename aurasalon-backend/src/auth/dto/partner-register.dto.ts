@@ -44,6 +44,10 @@ export class PartnerRegisterDto {
 
   @IsOptional()
   @IsString()
+  idType?: string; // 'TRADE_LICENSE' | 'KEBELE_ID' | 'PASSPORT' | 'NATIONAL_ID'
+
+  @IsOptional()
+  @IsString()
   payoutBank?: string;
 
   @IsOptional()

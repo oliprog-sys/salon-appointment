@@ -197,6 +197,7 @@ export class AuthService {
       kebeleIdUrl,
       payoutBank,
       payoutAccount,
+      idType,
     } = dto;
 
     const existingUser = await this.prisma.user.findUnique({
@@ -245,6 +246,7 @@ export class AuthService {
           subCity,
           status: SalonStatus.PENDING_REVIEW,
           isActive: false,
+          idType: idType || (tradeLicenseUrl ? 'TRADE_LICENSE' : 'KEBELE_ID'),
           tradeLicenseUrl: tradeLicenseUrl || null,
           tinNumber: tinNumber || null,
           kebeleIdUrl: kebeleIdUrl || null,
